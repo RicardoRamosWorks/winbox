@@ -1,7 +1,7 @@
 # Winbox
 Winbox is a 16-bit layer for running legacy software on Windows without the need for NTVDM.
 
-![Imagem](https://raw.githubusercontent.com/RicardoRamosWorks/ricardoramosworks.github.io/refs/heads/main/Images/ntVDBM.png)
+![Imagem](https://raw.githubusercontent.com/RicardoRamosWorks/ricardoramosworks.github.io/refs/heads/main/Images/winbox.png)
 
 
 	888       888 d8b          888
