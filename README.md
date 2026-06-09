@@ -3,17 +3,6 @@ Winbox is a 16-bit layer for running legacy software on Windows without the need
 
 ![Imagem](https://raw.githubusercontent.com/RicardoRamosWorks/ricardoramosworks.github.io/refs/heads/main/Images/Winbox.png)
 
-
-	888       888 d8b          888
-	888   o   888 Y8P          888
-	888  d8b  888              888
-	888 d888b 888 888 88888b.  88888b.   .d88b.  888  888
-	888d88888b888 888 888 "88b 888 "88b d88""88b `Y8bd8P'
-	88888P Y88888 888 888  888 888  888 888  888   X88K
-	8888P   Y8888 888 888  888 888 d88P Y88..88P .d8""8b.
-	888P     Y888 888 888  888 88888P"   "Y88P"  888  888
-
-
 This is a highly modified fork of dosbox-ece, dosbox 0.74-3, and a bit of dosbox-x low end.
 
 The focus is on making DOSBox extremely lightweight and fast enough to run on something as low as the 1GHz Pentium M of the first-generation Apple TV and 256MB of RAM.
