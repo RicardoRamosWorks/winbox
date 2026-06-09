@@ -1,0 +1,762 @@
+/*
+ *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ */
+
+#include "callback.h"
+#include "control.h"
+#include "cpu.h"
+#include "cross.h"
+#include "debug.h"
+#include "dos_inc.h"
+#include "dosbox.h"
+#include "inout.h"
+#include "ints/int10.h"
+#include "mapper.h"
+#include "mixer.h"
+#include "pci_bus.h"
+#include "pic.h"
+#include "programs.h"
+#include "render.h"
+#include "setup.h"
+#include "support.h"
+#include "timer.h"
+#include "video.h"
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+Config *control;
+MachineType machine;
+SVGACards svgaCard;
+
+/* The whole load of startups for all the subfunctions */
+void MSG_Init(Section_prop *);
+void LOG_StartUp(void);
+void MEM_Init(Section *);
+void PAGING_Init(Section *);
+void IO_Init(Section *);
+void CALLBACK_Init(Section *);
+void PROGRAMS_Init(Section *);
+// void CREDITS_Init(Section*);
+void RENDER_Init(Section *);
+void VGA_Init(Section *);
+
+void DOS_Init(Section *);
+
+void CPU_Init(Section *);
+
+#if C_FPU
+void FPU_Init(Section *);
+#endif
+
+void DMA_Init(Section *);
+
+void MIXER_Init(Section *);
+void MIDI_Init(Section *);
+void HARDWARE_Init(Section *);
+
+#if defined(PCI_FUNCTIONALITY_ENABLED)
+void PCI_Init(Section *);
+void VOODOO_Init(Section *);
+#endif
+
+void KEYBOARD_Init(Section *); // TODO This should setup INT 16 too but ok ;)
+void JOYSTICK_Init(Section *);
+void GLIDE_Init(Section *);
+void MOUSE_Init(Section *);
+void SBLASTER_Init(Section *);
+void PCSPEAKER_Init(Section *);
+
+void SID_Init(Section *sec);
+
+void PIC_Init(Section *);
+void TIMER_Init(Section *);
+void BIOS_Init(Section *);
+void CMOS_Init(Section *);
+
+void MSCDEX_Init(Section *);
+void DRIVES_Init(Section *);
+void CDROM_Image_Init(Section *);
+
+/* Dos Internal mostly */
+void EMS_Init(Section *);
+void XMS_Init(Section *);
+
+void DOS_KeyboardLayout_Init(Section *);
+
+void AUTOEXEC_Init(Section *);
+void SHELL_Init(void);
+
+void INT10_Init(Section *);
+
+static LoopHandler *loop;
+
+bool SDLNetInited;
+
+static Bit32u ticksRemain;
+static Bit32u ticksLast;
+static Bit32u ticksAdded;
+Bit32s ticksDone;
+Bit32u ticksScheduled;
+bool ticksLocked;
+void increaseticks();
+
+static Bitu Normal_Loop(void) {
+	Bits ret;
+	while (1) {
+		if (PIC_RunQueue()) {
+			ret = (*cpudecoder)();
+			if (GCC_UNLIKELY(ret < 0))
+				return 1;
+			if (ret > 0) {
+				if (GCC_UNLIKELY(ret >= CB_MAX))
+					return 0;
+				Bitu blah = (*CallBack_Handlers[ret])();
+				if (GCC_UNLIKELY(blah))
+					return blah;
+			}
+
+		} else {
+			GFX_Events();
+			if (ticksRemain > 0) {
+				TIMER_AddTick();
+				ticksRemain--;
+			} else {
+				increaseticks();
+				return 0;
+			}
+		}
+	}
+}
+
+// For trying other delays
+#define wrap_delay(a) SDL_Delay(a)
+
+void increaseticks() { // Make it return ticksRemain and set it in the function
+	// above to remove the global variable.
+	if (GCC_UNLIKELY(ticksLocked)) { // For Fast Forward Mode
+		ticksRemain = 5;
+		/* Reset any auto cycle guessing for this frame */
+		ticksLast = GetTicks();
+		ticksAdded = 0;
+		ticksDone = 0;
+		ticksScheduled = 0;
+		return;
+	}
+
+	static Bit32s lastsleepDone = -1;
+	static Bitu sleep1count = 0;
+
+	Bit32u ticksNew;
+	ticksNew = GetTicks();
+	ticksScheduled += ticksAdded;
+	if (ticksNew <= ticksLast) { // lower should not be possible, only equal.
+		ticksAdded = 0;
+
+		if (!CPU_CycleAutoAdjust || CPU_SkipCycleAutoAdjust ||
+		        sleep1count < 3) {
+			wrap_delay(1);
+		} else {
+			/* Certain configurations always give an exact sleepingtime of 1,
+			   this causes problems due to the fact that dosbox keeps track of
+			   full blocks. This code introduces some randomness to the time
+			   slept, which improves stability on those configurations
+			 */
+			static const Bit32u sleeppattern[] = {2, 2, 3, 2, 2, 4, 2};
+			static Bit32u sleepindex = 0;
+			if (ticksDone != lastsleepDone)
+				sleepindex = 0;
+			wrap_delay(sleeppattern[sleepindex++]);
+			sleepindex %= sizeof(sleeppattern) / sizeof(sleeppattern[0]);
+		}
+		Bit32s timeslept = GetTicks() - ticksNew;
+		// Count how many times in the current block (of 250 ms) the time slept
+		// was 1 ms
+		if (CPU_CycleAutoAdjust && !CPU_SkipCycleAutoAdjust && timeslept == 1)
+			sleep1count++;
+		lastsleepDone = ticksDone;
+
+		// Update ticksDone with the time spent sleeping
+		ticksDone -= timeslept;
+		if (ticksDone < 0)
+			ticksDone = 0;
+		return; // 0
+
+		// If we do work this tick and sleep till the next tick, then ticksDone
+		// is decreased, despite the fact that work was done as well in this
+		// tick. Maybe make it depend on an extra parameter. What do we know:
+		// ticksRemain = 0 (condition to enter this function) ticksNew = time
+		// before sleeping
+
+		// maybe keep track of sleeped time in this frame, and use sleeped and
+		// done as indicators. (and take care of the fact there are frames that
+		// have both.
+	}
+
+	// TicksNew > ticksLast
+	ticksRemain = ticksNew - ticksLast;
+	ticksLast = ticksNew;
+	ticksDone += ticksRemain;
+	if (ticksRemain > 20) {
+		//		LOG(LOG_MISC,LOG_ERROR)("large remain %d",ticksRemain);
+		ticksRemain = 20;
+	}
+	ticksAdded = ticksRemain;
+
+	// Is the system in auto cycle mode guessing ? If not just exit. (It can be
+	// temporary disabled)
+	if (!CPU_CycleAutoAdjust || CPU_SkipCycleAutoAdjust)
+		return;
+
+	if (ticksScheduled >= 250 || ticksDone >= 250 ||
+	        (ticksAdded > 15 && ticksScheduled >= 5)) {
+		if (ticksDone < 1)
+			ticksDone = 1; // Protect against div by zero
+		/* ratio we are aiming for is around 90% usage*/
+		Bit32s ratio =
+		    (ticksScheduled * (CPU_CyclePercUsed * 90 * 1024 / 100 / 100)) /
+		    ticksDone;
+		Bit32s new_cmax = CPU_CycleMax;
+		Bit64s cproc = (Bit64s)CPU_CycleMax * (Bit64s)ticksScheduled;
+		double ratioremoved = 0.0; // increase scope for logging
+		if (cproc > 0) {
+			/* ignore the cycles added due to the IO delay code in order
+			   to have smoother auto cycle adjustments */
+			ratioremoved = (double)CPU_IODelayRemoved / (double)cproc;
+			if (ratioremoved < 1.0) {
+				double ratio_not_removed = 1 - ratioremoved;
+				ratio = (Bit32s)((double)ratio * ratio_not_removed);
+
+				/* Don't allow very high ratio which can cause us to lock as we
+				 * don't scale down for very low ratios. High ratio might result
+				 * because of timing resolution */
+				if (ticksScheduled >= 250 && ticksDone < 10 && ratio > 16384)
+					ratio = 16384;
+
+				// Limit the ratio even more when the cycles are already way
+				// above the realmode default.
+				if (ticksScheduled >= 250 && ticksDone < 10 && ratio > 5120 &&
+				        CPU_CycleMax > 50000)
+					ratio = 5120;
+
+				// When downscaling multiple times in a row, ensure a minimum
+				// amount of downscaling
+				if (ticksAdded > 15 && ticksScheduled >= 5 &&
+				        ticksScheduled <= 20 && ratio > 800)
+					ratio = 800;
+
+				if (ratio <= 1024) {
+					// ratio_not_removed = 1.0; //enabling this restores the old
+					// formula
+					double r = (1.0 + ratio_not_removed) /
+					           (ratio_not_removed +
+					            1024.0 / (static_cast<double>(ratio)));
+					new_cmax = 1 + static_cast<Bit32s>(CPU_CycleMax * r);
+				} else {
+					Bit64s ratio_with_removed =
+					    (Bit64s)((((double)ratio - 1024.0) *
+					              ratio_not_removed) +
+					             1024.0);
+					Bit64s cmax_scaled =
+					    (Bit64s)CPU_CycleMax * ratio_with_removed;
+					new_cmax = (Bit32s)(1 + (CPU_CycleMax >> 1) +
+					                    cmax_scaled / (Bit64s)2048);
+				}
+			}
+		}
+
+		if (new_cmax < CPU_CYCLES_LOWER_LIMIT)
+			new_cmax = CPU_CYCLES_LOWER_LIMIT;
+		/*
+		LOG(LOG_MISC,LOG_ERROR)("cyclelog: current %06d   cmax %06d   ratio %05d
+		done %03d   sched %03d Add %d rr %4.2f", CPU_CycleMax, new_cmax, ratio,
+		        ticksDone,
+		        ticksScheduled,
+		        ticksAdded,
+		        ratioremoved);
+		*/
+
+		/* ratios below 1% are considered to be dropouts due to
+		   temporary load imbalance, the cycles adjusting is skipped */
+		if (ratio > 10) {
+			/* ratios below 12% along with a large time since the last update
+			   has taken place are most likely caused by heavy load through a
+			   different application, the cycles adjusting is skipped as well */
+			if ((ratio > 120) || (ticksDone < 700)) {
+				CPU_CycleMax = new_cmax;
+				if (CPU_CycleLimit > 0) {
+					if (CPU_CycleMax > CPU_CycleLimit)
+						CPU_CycleMax = CPU_CycleLimit;
+				} else if (CPU_CycleMax > 2000000)
+					CPU_CycleMax =
+					    2000000; // Hardcoded limit, if no limit was specified.
+			}
+		}
+
+		// Reset cycleguessing parameters.
+		CPU_IODelayRemoved = 0;
+		ticksDone = 0;
+		ticksScheduled = 0;
+		lastsleepDone = -1;
+		sleep1count = 0;
+	} else if (ticksAdded > 15) {
+		/* ticksAdded > 15 but ticksScheduled < 5, lower the cycles
+		   but do not reset the scheduled/done ticks to take them into
+		   account during the next auto cycle adjustment */
+		CPU_CycleMax /= 3;
+		if (CPU_CycleMax < CPU_CYCLES_LOWER_LIMIT)
+			CPU_CycleMax = CPU_CYCLES_LOWER_LIMIT;
+	} // if (ticksScheduled >= 250 || ticksDone >= 250 || (ticksAdded > 15 &&
+	// ticksScheduled >= 5) )
+}
+
+void DOSBOX_SetLoop(LoopHandler *handler) {
+	loop = handler;
+}
+
+void DOSBOX_SetNormalLoop() {
+	loop = Normal_Loop;
+}
+
+void DOSBOX_RunMachine(void) {
+	Bitu ret;
+	do {
+		ret = (*loop)();
+	} while (!ret);
+}
+
+static void DOSBOX_UnlockSpeed(bool pressed) {
+	static bool autoadjust = false;
+	if (pressed) {
+		// LOG_MSG("Fast Forward ON");
+		ticksLocked = true;
+		if (CPU_CycleAutoAdjust) {
+			autoadjust = true;
+			CPU_CycleAutoAdjust = false;
+			CPU_CycleMax /= 3;
+			if (CPU_CycleMax < 1000)
+				CPU_CycleMax = 1000;
+		}
+	} else {
+		// LOG_MSG("Fast Forward OFF");
+		ticksLocked = false;
+		if (autoadjust) {
+			autoadjust = false;
+			CPU_CycleAutoAdjust = true;
+		}
+	}
+}
+
+static void DOSBOX_RealInit(Section *sec) {
+	Section_prop *section = static_cast<Section_prop *>(sec);
+	/* Initialize some dosbox internals */
+
+	ticksRemain = 0;
+	ticksLast = GetTicks();
+	ticksLocked = false;
+	DOSBOX_SetLoop(&Normal_Loop);
+	MSG_Init(section);
+
+	MAPPER_AddHandler(DOSBOX_UnlockSpeed, MK_f12, MMOD2, "speedlock",
+	                  "Speedlock");
+	std::string cmd_machine;
+	if (control->cmdline->FindString("-machine", cmd_machine, true)) {
+		// update value in config (else no matching against suggested values
+		section->HandleInputline(std::string("machine=") + cmd_machine);
+	}
+
+	std::string mtype(section->Get_string("machine"));
+	svgaCard = SVGA_None;
+	machine = MCH_VGA;
+	int10.vesa_nolfb = false;
+	int10.vesa_oldvbe = false;
+	if (mtype == "svga_s3") {
+		svgaCard = SVGA_S3Trio;
+	} else if (mtype == "vesa_nolfb") {
+		svgaCard = SVGA_S3Trio;
+		int10.vesa_nolfb = true;
+	} else if (mtype == "vesa_oldvbe") {
+		svgaCard = SVGA_S3Trio;
+		int10.vesa_oldvbe = true;
+	} else if (mtype == "svga_et4000") {
+		svgaCard = SVGA_TsengET4K;
+	} else if (mtype == "svga_et3000") {
+		svgaCard = SVGA_TsengET3K;
+	} else if (mtype == "svga_paradise") {
+		svgaCard = SVGA_ParadisePVGA1A;
+	} else
+		E_Exit("Winbox:Unknown machine type %s", mtype.c_str());
+}
+
+void DOSBOX_Init(void) {
+	Section_prop *secprop;
+	Section_line *secline;
+	Prop_int *Pint;
+	Prop_hex *Phex;
+	Prop_string *Pstring;
+	Prop_bool *Pbool;
+	Prop_multival *Pmulti;
+	Prop_multival_remain *Pmulti_remain;
+
+	SDLNetInited = false;
+
+	// Some frequently used option sets
+	const char *rates[] = {"22050", "16000",
+	                       "11025", "8000",  "49716", 0
+	                      };
+	const char *oplrates[] = {"22050",
+	                          "16000", "11025", "8000",  0
+	                         };
+	const char *ios[] = {"220", "240", "260", "280", "2a0",
+	                     "2c0", "2e0", "300", 0
+	                    };
+	const char *irqssb[] = {"7", "5", "3", "9", "10", "11", "12", 0};
+	const char *dmassb[] = {"1", "5", "0", "3", "6", "7", 0};
+	const char *iosgus[] = {"240", "220", "260", "280", "2a0",
+	                        "2c0", "2e0", "300", 0
+	                       };
+	const char *irqsgus[] = {"5", "3", "7", "9", "10", "11", "12", 0};
+	const char *dmasgus[] = {"3", "0", "1", "5", "6", "7", 0};
+
+	/* Setup all the different modules making up DOSBox */
+	const char *machines[] = {"svga_s3",
+	                          "svga_et3000",
+	                          "svga_et4000",
+	                          "svga_paradise",
+	                          "vesa_nolfb",
+	                          "vesa_oldvbe",
+	                          0
+	                         };
+	secprop = control->AddSection_prop("Adjusts", &DOSBOX_RealInit);
+	Pstring = secprop->Add_path("language", Property::Changeable::Always, "");
+	// Pstring->Set_help("\n");
+
+	Pstring = secprop->Add_string("machine", Property::Changeable::OnlyAtStart,
+	                              "svga_s3");
+	Pstring->Set_values(machines);
+	// Pstring->Set_help("\n");
+
+	Pstring =
+	    secprop->Add_path("captures", Property::Changeable::Always, "capture");
+	// Pstring->Set_help("\n");
+
+#if C_DEBUG
+	LOG_StartUp();
+#endif
+
+	secprop->AddInitFunction(&IO_Init);       // done
+	secprop->AddInitFunction(&PAGING_Init);   // done
+	secprop->AddInitFunction(&MEM_Init);      // done
+	secprop->AddInitFunction(&HARDWARE_Init); // done
+	Pint = secprop->Add_int("memsize", Property::Changeable::WhenIdle, 30);
+	Pint->SetMinMax(1, 383);
+	Pint->Set_help("\n");
+	secprop->AddInitFunction(&CALLBACK_Init);
+	secprop->AddInitFunction(&PIC_Init); // done
+	secprop->AddInitFunction(&PROGRAMS_Init);
+	secprop->AddInitFunction(&TIMER_Init); // done
+	secprop->AddInitFunction(&CMOS_Init);  // done
+
+	secprop = control->AddSection_prop("render", &RENDER_Init, true);
+	Pint = secprop->Add_int("frameskip", Property::Changeable::Always, 0);
+	Pint->SetMinMax(0, 10);
+	Pint->Set_help("\n");
+
+	Pbool = secprop->Add_bool("aspect", Property::Changeable::Always, false);
+	Pbool->Set_help("\n");
+
+	Pmulti = secprop->Add_multi("scaler", Property::Changeable::Always, " ");
+	Pmulti->SetValue("none");
+	Pmulti->Set_help("\n");
+	Pstring = Pmulti->GetSection()->Add_string(
+	              "type", Property::Changeable::Always, "none");
+
+	const char *scalers[] = {
+		"none",
+		"normal2x",
+		"normal3x",
+#if RENDER_USE_ADVANCED_SCALERS > 2
+		"advmame2x",
+		"advinterp2x",
+		"hq2x",
+		"2xsai",
+		"super2xsai",
+		"supereagle",
+#endif
+#if RENDER_USE_ADVANCED_SCALERS > 0
+		"tv2x",
+		"rgb2x",
+		"scan2x",
+#endif
+		0
+	};
+	Pstring->Set_values(scalers);
+
+	const char *force[] = {"", "forced", 0};
+	Pstring = Pmulti->GetSection()->Add_string(
+	              "force", Property::Changeable::Always, "");
+	Pstring->Set_values(force);
+#if C_OPENGL
+	Pstring =
+	    secprop->Add_path("glshader", Property::Changeable::Always, "none");
+	// Pstring->Set_help("\n");
+#endif
+
+	secprop = control->AddSection_prop("cpu", &CPU_Init, true); // done
+	const char *cores[] = {
+		"auto",
+#if (C_DYNAMIC_X86) || (C_DYNREC)
+		"dynamic",
+#endif
+		"normal",
+		"simple",
+		0
+	};
+	Pstring =
+	    secprop->Add_string("core", Property::Changeable::WhenIdle, "dynamic");
+	Pstring->Set_values(cores);
+	// Pstring->Set_help("\n");
+
+	const char *cputype_values[] = {"auto",     "386",          "386_slow",
+	                                "486_slow", "pentium_slow", "386_prefetch",
+	                                0
+	                               };
+	Pstring =
+	    secprop->Add_string("cputype", Property::Changeable::Always, "auto");
+	Pstring->Set_values(cputype_values);
+	// Pstring->Set_help("\n");
+
+	Pmulti_remain = secprop->Add_multiremain(
+	                    "cycles", Property::Changeable::Always, "auto");
+	Pmulti_remain->Set_help("\n");
+
+	const char *cyclest[] = {"auto", "fixed", "max", "%u", 0};
+	Pstring = Pmulti_remain->GetSection()->Add_string(
+	              "type", Property::Changeable::Always, "auto");
+	Pmulti_remain->SetValue("auto");
+	Pstring->Set_values(cyclest);
+
+	Pstring = Pmulti_remain->GetSection()->Add_string(
+	              "parameters", Property::Changeable::Always, "");
+
+	Pint = secprop->Add_int("cycleup", Property::Changeable::Always, 500);
+	Pint->SetMinMax(1, 1000000);
+	Pint->Set_help("\n");
+
+	Pint = secprop->Add_int("cycledown", Property::Changeable::Always, 500);
+	Pint->SetMinMax(1, 1000000);
+	Pint->Set_help("\n");
+
+#if C_FPU
+	secprop->AddInitFunction(&FPU_Init);
+#endif
+	secprop->AddInitFunction(&DMA_Init); // done
+	secprop->AddInitFunction(&VGA_Init);
+	secprop->AddInitFunction(&KEYBOARD_Init);
+
+#if defined(PCI_FUNCTIONALITY_ENABLED)
+	secprop = control->AddSection_prop("pci", &PCI_Init, false); // PCI bus
+
+	secprop->AddInitFunction(&VOODOO_Init, true);
+	const char *voodoo_settings[] = {
+		"false",
+		"software",
+#if C_OPENGL
+		"opengl",
+#endif
+		"auto",
+		0
+	};
+	Pstring =
+	    secprop->Add_string("voodoo", Property::Changeable::WhenIdle, "false");
+	Pstring->Set_values(voodoo_settings);
+	// Pstring->Set_help("\n");
+
+	const char *voodoo_memory[] = {"standard", "max", 0};
+	Pstring = secprop->Add_string(
+	              "voodoomem", Property::Changeable::OnlyAtStart, "standard");
+	Pstring->Set_values(voodoo_memory);
+	// Pstring->Set_help("\n");
+#endif
+
+	secprop = control->AddSection_prop("mixer", &MIXER_Init);
+	Pbool =
+	    secprop->Add_bool("nosound", Property::Changeable::OnlyAtStart, false);
+	Pbool->Set_help("\n");
+
+	Pint = secprop->Add_int("rate", Property::Changeable::OnlyAtStart, 22050);
+	Pint->Set_values(rates);
+	Pint->Set_help("\n");
+
+	const char *blocksizes[] = {"256", "512", "1024", "2048", "4096", "8192",
+	                                0
+	                           };
+	Pint =
+	    secprop->Add_int("blocksize", Property::Changeable::OnlyAtStart, 256);
+	Pint->Set_values(blocksizes);
+	Pint->Set_help("\n");
+
+	Pint = secprop->Add_int("prebuffer", Property::Changeable::OnlyAtStart, 80);
+	Pint->SetMinMax(0, 100);
+	Pint->Set_help("\n");
+
+	secprop = control->AddSection_prop("sblaster", &SBLASTER_Init, true); // done
+
+	const char *sbtypes[] = {"sb1",  "sb2",  "sbpro1", "sbpro2",
+	                         "sb16", "none", 0
+	                        };
+	Pstring =
+	    secprop->Add_string("sbtype", Property::Changeable::WhenIdle, "sb16");
+	Pstring->Set_values(sbtypes);
+	// Pstring->Set_help("\n");
+
+	Phex = secprop->Add_hex("sbbase", Property::Changeable::WhenIdle, 0x220);
+	Phex->Set_values(ios);
+	Phex->Set_help("\n");
+
+	Pint = secprop->Add_int("irq", Property::Changeable::WhenIdle, 7);
+	Pint->Set_values(irqssb);
+	Pint->Set_help("\n");
+
+	Pint = secprop->Add_int("dma", Property::Changeable::WhenIdle, 1);
+	Pint->Set_values(dmassb);
+	Pint->Set_help("\n");
+
+	Pint = secprop->Add_int("hdma", Property::Changeable::WhenIdle, 5);
+	Pint->Set_values(dmassb);
+	Pint->Set_help("\n");
+
+	Pbool = secprop->Add_bool("sbmixer", Property::Changeable::WhenIdle, true);
+	Pbool->Set_help("\n");
+
+	const char *oplmodes[] = {"auto", "cms",      "opl2", "dualopl2",
+	                          "opl3", "opl3gold", "none", 0
+	                         };
+	Pstring =
+	    secprop->Add_string("oplmode", Property::Changeable::WhenIdle, "auto");
+	Pstring->Set_values(oplmodes);
+	// Pstring->Set_help("\n");
+
+	const char *oplemus[] = {"default", "compat", "fast", 0};
+	Pstring =
+	    secprop->Add_string("oplemu", Property::Changeable::WhenIdle, "fast");
+	Pstring->Set_values(oplemus);
+	// Pstring->Set_help("\n");
+
+	Pint = secprop->Add_int("oplrate", Property::Changeable::WhenIdle, 22050);
+	Pint->Set_values(oplrates);
+	Pint->Set_help("\n");
+
+	Pint = secprop->Add_int("fmstrength", Property::Changeable::WhenIdle, 150);
+	Pint->SetMinMax(1, 1000);
+	Pint->Set_help("\n");
+
+	secprop = control->AddSection_prop("speaker", &PCSPEAKER_Init, true); // done
+	Pbool =
+	    secprop->Add_bool("pcspeaker", Property::Changeable::WhenIdle, false);
+	Pbool->Set_help("\n");
+
+	Pint = secprop->Add_int("pcrate", Property::Changeable::WhenIdle, 8000);
+	Pint->Set_values(rates);
+	Pint->Set_help("\n");
+
+	secprop = control->AddSection_prop("joystick", &BIOS_Init, false); // done
+	secprop->AddInitFunction(&INT10_Init);
+	secprop->AddInitFunction(
+	    &MOUSE_Init); // Must be after int10 as it uses CurMode
+	secprop->AddInitFunction(&JOYSTICK_Init, true);
+	const char *joytypes[] = {"auto", "2axis", "4axis", "4axis_2",
+	                          "fcs",  "ch",    "none",  0
+	                         };
+	Pstring = secprop->Add_string("joysticktype",
+	                              Property::Changeable::WhenIdle, "none");
+	Pstring->Set_values(joytypes);
+	// Pstring->Set_help("\n");
+
+	Pbool = secprop->Add_bool("timed", Property::Changeable::WhenIdle, true);
+	Pbool->Set_help("\n");
+
+	Pbool =
+	    secprop->Add_bool("autofire", Property::Changeable::WhenIdle, false);
+	Pbool->Set_help("\n");
+
+	Pbool = secprop->Add_bool("swap34", Property::Changeable::WhenIdle, false);
+	Pbool->Set_help("\n");
+
+	Pbool =
+	    secprop->Add_bool("buttonwrap", Property::Changeable::WhenIdle, false);
+	Pbool->Set_help("\n");
+
+	Pbool = secprop->Add_bool("circularinput", Property::Changeable::WhenIdle,
+	                          false);
+	Pbool->Set_help("\n");
+
+	Pint = secprop->Add_int("deadzone", Property::Changeable::WhenIdle, 10);
+	Pint->SetMinMax(0, 100);
+	Pint->Set_help("\n");
+
+	secprop = control->AddSection_prop("glide", &GLIDE_Init, true);
+	Pbool = secprop->Add_bool("glide", Property::Changeable::WhenIdle, false);
+	Pbool->Set_help("\n");
+	// Phex = secprop->Add_hex("grport",Property::Changeable::WhenIdle,0x600);
+	// Phex->Set_help("I/O port to use for host communication.");
+	Pstring = secprop->Add_string("lfb", Property::Changeable::WhenIdle,
+	                              "full_noaux");
+	// Pstring->Set_help("\n");
+	Pbool = secprop->Add_bool("splash", Property::Changeable::WhenIdle, true);
+	Pbool->Set_help("\n");
+
+	/* All the DOS Related stuff, which will eventually start up in the shell */
+	secprop = control->AddSection_prop("dos", &DOS_Init, false); // done
+	secprop->AddInitFunction(&XMS_Init, true);                   // done
+	Pbool = secprop->Add_bool("xms", Property::Changeable::WhenIdle, true);
+	Pbool->Set_help("\n");
+
+	secprop->AddInitFunction(&EMS_Init, true); // done
+	const char *ems_settings[] = {"true", "emsboard", "emm386", "false", 0};
+	Pstring =
+	    secprop->Add_string("ems", Property::Changeable::WhenIdle, "true");
+	Pstring->Set_values(ems_settings);
+	// Pstring->Set_help("\n");
+
+	Pbool = secprop->Add_bool("umb", Property::Changeable::WhenIdle, true);
+	Pbool->Set_help("Enable UMB support.");
+
+	secprop->AddInitFunction(&DOS_KeyboardLayout_Init, true);
+	Pstring = secprop->Add_string("keyboardlayout",
+	                              Property::Changeable::WhenIdle, "auto");
+	// Pstring->Set_help("Language code of the keyboard layout (or none).");
+
+	// Mscdex
+	secprop->AddInitFunction(&MSCDEX_Init);
+	secprop->AddInitFunction(&DRIVES_Init);
+	secprop->AddInitFunction(&CDROM_Image_Init);
+
+	//	secprop->AddInitFunction(&CREDITS_Init);
+
+	// TODO ?
+	secline = control->AddSection_line("autoexec", &AUTOEXEC_Init);
+	MSG_Add("AUTOEXEC_CONFIGFILE_HELP", "\n"
+
+	       );
+	MSG_Add("CONFIGFILE_INTRO", "\n");
+	MSG_Add("CONFIG_SUGGESTED_VALUES", "values");
+
+	control->SetStartUp(&SHELL_Init);
+}

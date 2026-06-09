@@ -1,0 +1,24 @@
+1.0
+- All the code has been reviewed, some things have been corrected to avoid warnings during compilation, everything is standardized in a way that gcc 7 is happy with.
+
+- The audio backend (mixer.cpp) has been completely rewritten. SDL added some overhead, so everything works based on wave out (direct x), which guarantees some headroom for the CPU.
+
+- OpenGL has been improved to better fit the 7300M and the driver; instead of drawing a giant triangle and placing the screen texture in it, a rectangle is created. This adds minimal overhead but ensures that it works well with any driver, even older ones.
+
+- The entire dynamic compiler and a good part of the CPU have been rewritten, using the improvements found in the low-end dosbox-x. Whenever possible, I tried to adjust things to 16 or 32 kb to help with the cache. I tried, as much as I could, not to overload the cache, because due to the way the Pentium M works, it will work happier with small chunks.
+
+- Disabled or removed: MT32 emulation, Fluidsynth, Tandy, PCJr, complex shader rendering, complex CPU scalers, splash screen, recording codec support, recording, and other expensive embellishments.
+
+- The configuration file generator has been heavily modified. Help texts have been formatted using ASCII and tabs.
+
+- The welcome screen has been replaced with ASCII art.
+
+- The internal autoexec (which runs before the user's autoexec) is now permanently using @echo off to hide the output; otherwise, the system-generated SET BLASTER line would be visible (it looks nicer with echo off).
+
+- The dynamic compiler's internal cache has been readjusted to much more conservative levels in order to try to save RAM usage.
+
+- A new icon file has been created for the project.
+
+- Although deactivated, the splash screen is still included in the code, and its image contains a customized NTVDBM logo with credits to dosbox. It can be reactivated by editing sdlmain.
+
+- The configuration file, and all strings named DOSBOX or DOSBOX-ECE, have been replaced with NTVDBM.

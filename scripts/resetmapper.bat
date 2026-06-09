@@ -1,0 +1,1 @@
+NTVDBM.exe -resetmapper
