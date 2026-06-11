@@ -1,1 +1,0 @@
-NTVDBM.exe -opencaptures explorer.exe

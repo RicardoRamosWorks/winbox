@@ -1,24 +1,12 @@
-/*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
 /* Got it from Bochs */
 
+/////////////////////////////////////////////////////////////////////////
+// $Id: scsidefs.h,v 1.3 2005-07-21 12:49:52 qbix79 Exp $
+/////////////////////////////////////////////////////////////////////////
+//
 //
 // iodev/scsidefs.h
+// $Id: scsidefs.h,v 1.3 2005-07-21 12:49:52 qbix79 Exp $
 //
 // This file was copied from ... ?
 //
@@ -217,25 +205,25 @@
 //***************************************************************************
 typedef struct {
 
-	BYTE    ErrorCode;          // Error Code (70H or 71H)
-	BYTE    SegmentNum;         // Number of current segment descriptor
-	BYTE    SenseKey;           // Sense Key(See bit definitions too)
-	BYTE    InfoByte0;          // Information MSB
-	BYTE    InfoByte1;          // Information MID
-	BYTE    InfoByte2;          // Information MID
-	BYTE    InfoByte3;          // Information LSB
-	BYTE    AddSenLen;          // Additional Sense Length
-	BYTE    ComSpecInf0;        // Command Specific Information MSB
-	BYTE    ComSpecInf1;        // Command Specific Information MID
-	BYTE    ComSpecInf2;        // Command Specific Information MID
-	BYTE    ComSpecInf3;        // Command Specific Information LSB
-	BYTE    AddSenseCode;       // Additional Sense Code
-	BYTE    AddSenQual;         // Additional Sense Code Qualifier
-	BYTE    FieldRepUCode;      // Field Replaceable Unit Code
-	BYTE    SenKeySpec15;       // Sense Key Specific 15th byte
-	BYTE    SenKeySpec16;       // Sense Key Specific 16th byte
-	BYTE    SenKeySpec17;       // Sense Key Specific 17th byte
-	BYTE    AddSenseBytes;      // Additional Sense Bytes
+    BYTE    ErrorCode;          // Error Code (70H or 71H)
+    BYTE    SegmentNum;         // Number of current segment descriptor
+    BYTE    SenseKey;           // Sense Key(See bit definitions too)
+    BYTE    InfoByte0;          // Information MSB
+    BYTE    InfoByte1;          // Information MID
+    BYTE    InfoByte2;          // Information MID
+    BYTE    InfoByte3;          // Information LSB
+    BYTE    AddSenLen;          // Additional Sense Length
+    BYTE    ComSpecInf0;        // Command Specific Information MSB
+    BYTE    ComSpecInf1;        // Command Specific Information MID
+    BYTE    ComSpecInf2;        // Command Specific Information MID
+    BYTE    ComSpecInf3;        // Command Specific Information LSB
+    BYTE    AddSenseCode;       // Additional Sense Code
+    BYTE    AddSenQual;         // Additional Sense Code Qualifier
+    BYTE    FieldRepUCode;      // Field Replaceable Unit Code
+    BYTE    SenKeySpec15;       // Sense Key Specific 15th byte
+    BYTE    SenKeySpec16;       // Sense Key Specific 16th byte
+    BYTE    SenKeySpec17;       // Sense Key Specific 17th byte
+    BYTE    AddSenseBytes;      // Additional Sense Bytes
 
 } SENSE_DATA_FMT;
 

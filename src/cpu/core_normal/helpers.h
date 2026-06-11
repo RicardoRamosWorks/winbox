@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,18 +11,18 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 
 #define GetEAa												\
-	PhysPt eaa=EALookupTable[rm]();
+	PhysPt eaa=EALookupTable[rm]();					
 
 #define GetRMEAa											\
 	GetRM;													\
-	GetEAa;
+	GetEAa;											
 
 
 #define RMEbGb(inst)														\
@@ -64,14 +64,14 @@
 		GetRMrw;															\
 		if (rm >= 0xc0 ) {GetEArw;inst(*rmrw,*earw,LoadRw,SaveRw);}			\
 		else {GetEAa;inst(*rmrw,LoadMw(eaa),LoadRw,SaveRw);}				\
-	}
+	}																
 
 #define RMGwEwOp3(inst,op3)													\
 	{																		\
 		GetRMrw;															\
 		if (rm >= 0xc0 ) {GetEArw;inst(*rmrw,*earw,op3,LoadRw,SaveRw);}		\
 		else {GetEAa;inst(*rmrw,LoadMw(eaa),op3,LoadRw,SaveRw);}			\
-	}
+	}																
 
 #define RMEw(inst)															\
 	{																		\
@@ -99,14 +99,14 @@
 		GetRMrd;															\
 		if (rm >= 0xc0 ) {GetEArd;inst(*rmrd,*eard,LoadRd,SaveRd);}			\
 		else {GetEAa;inst(*rmrd,LoadMd(eaa),LoadRd,SaveRd);}				\
-	}
+	}																
 
 #define RMGdEdOp3(inst,op3)													\
 	{																		\
 		GetRMrd;															\
 		if (rm >= 0xc0 ) {GetEArd;inst(*rmrd,*eard,op3,LoadRd,SaveRd);}		\
 		else {GetEAa;inst(*rmrd,LoadMd(eaa),op3,LoadRd,SaveRd);}			\
-	}
+	}																
 
 
 
@@ -160,13 +160,3 @@
 #define CASE_0F_B(_WHICH)						\
 	CASE_0F_W(_WHICH)							\
 	CASE_0F_D(_WHICH)
-
-#define FixEA16 do {							\
-		switch (rm & 7) {						\
-			case 6:	if (rm < 0x40) break;		\
-			case 2:								\
-			case 3:								\
-				BaseDS=BaseSS;					\
-		}										\
-		eaa=BaseDS+(Bit16u)(eaa-BaseDS);        \
-	} while(0)

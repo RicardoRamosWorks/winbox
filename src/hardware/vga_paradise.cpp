@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,11 +11,12 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+/* $Id: vga_paradise.cpp,v 1.4 2009-05-27 09:15:41 qbix79 Exp $ */
 
 #include "dosbox.h"
 #include "setup.h"
@@ -58,7 +59,7 @@ static void bank_setup_pvga1a() {
 	}
 }
 
-void write_p3cf_pvga1a(Bitu reg,Bitu val,Bitu /*iolen*/) {
+void write_p3cf_pvga1a(Bitu reg,Bitu val,Bitu iolen) {
 	if (pvga1a.locked() && reg >= 0x09 && reg <= 0x0e)
 		return;
 
@@ -103,12 +104,12 @@ void write_p3cf_pvga1a(Bitu reg,Bitu val,Bitu /*iolen*/) {
 		pvga1a.PR5 = val;
 		break;
 	default:
-		LOG(LOG_VGAMISC,LOG_NORMAL)("VGA:GFX:PVGA1A:Write to illegal index %2" sBitfs(X), reg);
+		LOG(LOG_VGAMISC,LOG_NORMAL)("VGA:GFX:PVGA1A:Write to illegal index %2X", reg);
 		break;
 	}
 }
 
-Bitu read_p3cf_pvga1a(Bitu reg,Bitu /*iolen*/) {
+Bitu read_p3cf_pvga1a(Bitu reg,Bitu iolen) {
 	if (pvga1a.locked() && reg >= 0x09 && reg <= 0x0e)
 		return 0x0;
 
@@ -128,7 +129,7 @@ Bitu read_p3cf_pvga1a(Bitu reg,Bitu /*iolen*/) {
 	case 0x0f:
 		return pvga1a.PR5;
 	default:
-		LOG(LOG_VGAMISC,LOG_NORMAL)("VGA:GFX:PVGA1A:Read from illegal index %2" sBitfs(X), reg);
+		LOG(LOG_VGAMISC,LOG_NORMAL)("VGA:GFX:PVGA1A:Read from illegal index %2X", reg);
 		break;
 	}
 
@@ -138,7 +139,7 @@ Bitu read_p3cf_pvga1a(Bitu reg,Bitu /*iolen*/) {
 void FinishSetMode_PVGA1A(Bitu /*crtc_base*/, VGA_ModeExtraData* modeData) {
 	pvga1a.biosMode = modeData->modeNo;
 
-	// Reset to single bank and set it to 0. May need to unlock first (DPaint locks on exit)
+// Reset to single bank and set it to 0. May need to unlock first (DPaint locks on exit)
 	IO_Write(0x3ce, 0x0f);
 	Bitu oldlock = IO_Read(0x3cf);
 	IO_Write(0x3cf, 0x05);
@@ -229,6 +230,13 @@ void SVGA_Setup_ParadisePVGA1A(void) {
 	} else {
 		pvga1a.PR1 = 2<<6;
 	}
+
+	// Paradise ROM signature
+	PhysPt rom_base=PhysMake(0xc000,0);
+	phys_writeb(rom_base+0x007d,'V');
+	phys_writeb(rom_base+0x007e,'G');
+	phys_writeb(rom_base+0x007f,'A');
+	phys_writeb(rom_base+0x0080,'=');
 
 	IO_Write(0x3cf, 0x05); // Enable!
 }

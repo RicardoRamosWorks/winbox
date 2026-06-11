@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,11 +11,12 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+/* $Id: core_dynrec.cpp,v 1.15 2009-08-02 16:52:33 c2woody Exp $ */
 
 #include "dosbox.h"
 
@@ -46,7 +47,6 @@
 #include "regs.h"
 #include "mem.h"
 #include "cpu.h"
-#include "debug.h"
 #include "paging.h"
 #include "inout.h"
 #include "lazyflags.h"
@@ -124,21 +124,20 @@ static void IllegalOptionDynrec(const char* msg) {
 }
 
 static struct {
-	BlockReturn (*runcode)(const Bit8u*);		// points to code that can start a block
+	BlockReturn (*runcode)(Bit8u*);		// points to code that can start a block
 	Bitu callback;				// the occurred callback
 	Bitu readdata;				// spare space used when reading from memory
 	Bit32u protected_regs[8];	// space to save/restore register values
 } core_dynrec;
 
 
-#include "dyn_cache.h"
+#include "core_dynrec/cache.h"
 
 #define X86			0x01
 #define X86_64		0x02
 #define MIPSEL		0x03
 #define ARMV4LE		0x04
-#define ARMV7LE		0x05
-#define ARMV8LE		0x07
+#define POWERPC		0x04
 
 #if C_TARGETCPU == X86_64
 #include "core_dynrec/risc_x64.h"
@@ -146,10 +145,10 @@ static struct {
 #include "core_dynrec/risc_x86.h"
 #elif C_TARGETCPU == MIPSEL
 #include "core_dynrec/risc_mipsel32.h"
-#elif (C_TARGETCPU == ARMV4LE) || (C_TARGETCPU == ARMV7LE)
+#elif C_TARGETCPU == ARMV4LE
 #include "core_dynrec/risc_armv4le.h"
-#elif C_TARGETCPU == ARMV8LE
-#include "core_dynrec/risc_armv8le.h"
+#elif C_TARGETCPU == POWERPC
+#include "core_dynrec/risc_ppc.h"
 #endif
 
 #include "core_dynrec/decoder.h"
@@ -159,14 +158,16 @@ CacheBlockDynRec * LinkBlocks(BlockReturn ret) {
 	// the last instruction was a control flow modifying instruction
 	Bitu temp_ip=SegPhys(cs)+reg_eip;
 	CodePageHandlerDynRec * temp_handler=(CodePageHandlerDynRec *)get_tlb_readhandler(temp_ip);
-	if (temp_handler->flags & (cpu.code.big ? PFLAG_HASCODE32:PFLAG_HASCODE16)) {
+	if (temp_handler->flags & PFLAG_HASCODE) {
 		// see if the target is an already translated block
 		block=temp_handler->FindCacheBlock(temp_ip & 4095);
-		if (block) { // found it, link the current block to
-			cache.block.running->LinkTo(ret==BR_Link2,block);
-		}
+		if (!block) return NULL;
+
+		// found it, link the current block to 
+		cache.block.running->LinkTo(ret==BR_Link2,block);
+		return block;
 	}
-	return block;
+	return NULL;
 }
 
 /*
@@ -185,9 +186,9 @@ Bits CPU_Core_Dynrec_Run(void) {
 	for (;;) {
 		// Determine the linear address of CS:EIP
 		PhysPt ip_point=SegPhys(cs)+reg_eip;
-#if C_HEAVY_DEBUG
-		if (DEBUG_HeavyIsBreakpoint()) return debugCallback;
-#endif
+		#if C_HEAVY_DEBUG
+			if (DEBUG_HeavyIsBreakpoint()) return debugCallback;
+		#endif
 
 		CodePageHandlerDynRec * chandler=0;
 		// see if the current page is present and contains code
@@ -218,22 +219,20 @@ Bits CPU_Core_Dynrec_Run(void) {
 					continue;
 				}
 				CPU_CycleLeft+=old_cycles;
-				return nc_retcode;
+				return nc_retcode; 
 			}
 		}
 
 run_block:
 		cache.block.running=0;
 		// now we're ready to run the dynamic code block
-		//		BlockReturn ret=((BlockReturn (*)(void))(block->cache.start))();
+//		BlockReturn ret=((BlockReturn (*)(void))(block->cache.start))();
 		BlockReturn ret=core_dynrec.runcode(block->cache.start);
 
 		switch (ret) {
 		case BR_Iret:
-#if C_DEBUG
 #if C_HEAVY_DEBUG
 			if (DEBUG_HeavyIsBreakpoint()) return debugCallback;
-#endif
 #endif
 			if (!GETFLAG(TF)) {
 				if (GETFLAG(IF) && PIC_IRQCheck) return CBRET_NONE;
@@ -247,21 +246,17 @@ run_block:
 			// the block was exited due to a non-predictable control flow
 			// modifying instruction (like ret) or some nontrivial cpu state
 			// changing instruction (for example switch to/from pmode),
-			// or the maximum number of instructions to translate was reached
-#if C_DEBUG
+			// or the maximal number of instructions to translate was reached
 #if C_HEAVY_DEBUG
 			if (DEBUG_HeavyIsBreakpoint()) return debugCallback;
-#endif
 #endif
 			break;
 
 		case BR_Cycles:
 			// cycles went negative, return from the core to handle
 			// external events, schedule the pic...
-#if C_DEBUG
-#if C_HEAVY_DEBUG
+#if C_HEAVY_DEBUG			
 			if (DEBUG_HeavyIsBreakpoint()) return debugCallback;
-#endif
 #endif
 			return CBRET_NONE;
 
@@ -271,9 +266,9 @@ run_block:
 			return core_dynrec.callback;
 
 		case BR_SMCBlock:
-			//			LOG_MSG("selfmodification of running block at %x:%x",SegValue(cs),reg_eip);
+//			LOG_MSG("selfmodification of running block at %x:%x",SegValue(cs),reg_eip);
 			cpu.exception.which=0;
-		// fallthrough, let the normal core handle the block-modifying instruction
+			// fallthrough, let the normal core handle the block-modifying instruction
 		case BR_Opcode:
 			// some instruction has been encountered that could not be translated
 			// (thus it is not part of the code block), the normal core will
@@ -312,7 +307,7 @@ Bits CPU_Core_Dynrec_Trap_Run(void) {
 
 	// trap to int1 unless the last instruction deferred this
 	// (allows hardware interrupts to be served without interaction)
-	if (!cpu.trap_skip) CPU_DebugException(DBINT_STEP,reg_eip);
+	if (!cpu.trap_skip) CPU_HW_Interrupt(1);
 
 	CPU_Cycles = oldCycles-1;
 	// continue (either the trapflag was clear anyways, or the int1 cleared it)

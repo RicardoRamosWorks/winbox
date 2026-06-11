@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,11 +11,12 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+/* $Id: memory.cpp,v 1.56 2009-05-27 09:15:41 qbix79 Exp $ */
 
 #include "dosbox.h"
 #include "mem.h"
@@ -23,14 +24,12 @@
 #include "setup.h"
 #include "paging.h"
 #include "regs.h"
-#include "glidedef.h"
-#include "voodoo.h"
 
 #include <string.h>
 
 #define PAGES_IN_BLOCK	((1024*1024)/MEM_PAGE_SIZE)
 #define SAFE_MEMORY	32
-#define MAX_MEMORY	384
+#define MAX_MEMORY	64
 #define MAX_PAGE_ENTRIES (MAX_MEMORY*1024*1024/4096)
 #define LFB_PAGES	512
 #define MAX_LINKS	((MAX_MEMORY*1024/4)+4096)		//Hopefully enough
@@ -67,24 +66,24 @@ public:
 	}
 	Bitu readb(PhysPt addr) {
 #if C_DEBUG
-		//LOG_MSG("Illegal read from %x, CS:IP %8x:%8x",addr,SegValue(cs),reg_eip);
+		LOG_MSG("Illegal read from %x, CS:IP %8x:%8x",addr,SegValue(cs),reg_eip);
 #else
 		static Bits lcount=0;
 		if (lcount<1000) {
 			lcount++;
-			//LOG_MSG("Illegal read from %x, CS:IP %8x:%8x",addr,SegValue(cs),reg_eip);
+			LOG_MSG("Illegal read from %x, CS:IP %8x:%8x",addr,SegValue(cs),reg_eip);
 		}
 #endif
-		return 0xff;
+		return 0;
 	} 
 	void writeb(PhysPt addr,Bitu val) {
 #if C_DEBUG
-		//LOG_MSG("Illegal write to %x, CS:IP %8x:%8x",addr,SegValue(cs),reg_eip);
+		LOG_MSG("Illegal write to %x, CS:IP %8x:%8x",addr,SegValue(cs),reg_eip);
 #else
 		static Bits lcount=0;
 		if (lcount<1000) {
 			lcount++;
-			//LOG_MSG("Illegal write to %x, CS:IP %8x:%8x",addr,SegValue(cs),reg_eip);
+			LOG_MSG("Illegal write to %x, CS:IP %8x:%8x",addr,SegValue(cs),reg_eip);
 		}
 #endif
 	}
@@ -109,13 +108,13 @@ public:
 		flags=PFLAG_READABLE|PFLAG_HASROM;
 	}
 	void writeb(PhysPt addr,Bitu val){
-		LOG(LOG_CPU,LOG_ERROR)("Write %" sBitfs(x) " to rom at %x",val,addr);
+		LOG(LOG_CPU,LOG_ERROR)("Write %x to rom at %x",val,addr);
 	}
 	void writew(PhysPt addr,Bitu val){
-		LOG(LOG_CPU,LOG_ERROR)("Write %" sBitfs(x) " to rom at %x",val,addr);
+		LOG(LOG_CPU,LOG_ERROR)("Write %x to rom at %x",val,addr);
 	}
 	void writed(PhysPt addr,Bitu val){
-		LOG(LOG_CPU,LOG_ERROR)("Write %" sBitfs(x) " to rom at %x",val,addr);
+		LOG(LOG_CPU,LOG_ERROR)("Write %x to rom at %x",val,addr);
 	}
 };
 
@@ -142,10 +141,6 @@ PageHandler * MEM_GetPageHandler(Bitu phys_page) {
 	} else if ((phys_page>=memory.lfb.start_page+0x01000000/4096) &&
 				(phys_page<memory.lfb.start_page+0x01000000/4096+16)) {
 		return memory.lfb.mmiohandler;
-	} else if (VOODOO_PCI_CheckLFBPage(phys_page)) {
-		return VOODOO_GetPageHandler();
-	} else if (glide.enabled && (phys_page>=(GLIDE_LFB>>12)) && (phys_page<(GLIDE_LFB>>12)+GLIDE_PAGES)) {
-		return (PageHandler*)glide.lfb_pagehandler;
 	}
 	return &illegal_page_handler;
 }
@@ -194,24 +189,6 @@ void MEM_BlockWrite(PhysPt pt,void const * const data,Bitu size) {
 	Bit8u const * read = reinterpret_cast<Bit8u const * const>(data);
 	while (size--) {
 		mem_writeb_inline(pt++,*read++);
-	}
-}
-
-void MEM_BlockRead32(PhysPt pt,void * data,Bitu size) {
-	Bit32u * write=(Bit32u *) data;
-	size>>=2;
-	while (size--) {
-		*write++=mem_readd_inline(pt);
-		pt+=4;
-	}
-}
-
-void MEM_BlockWrite32(PhysPt pt,void * data,Bitu size) {
-	Bit32u * read=(Bit32u *) data;
-	size>>=2;
-	while (size--) {
-		mem_writed_inline(pt,*read++);
-		pt+=4;
 	}
 }
 
@@ -576,15 +553,15 @@ public:
 		if (memsize < 1) memsize = 1;
 		/* max 63 to solve problems with certain xms handlers */
 		if (memsize > MAX_MEMORY-1) {
-		//	LOG_MSG("Maximum memory size is %d MB",MAX_MEMORY - 1);
+			LOG_MSG("Maximum memory size is %d MB",MAX_MEMORY - 1);
 			memsize = MAX_MEMORY-1;
 		}
 		if (memsize > SAFE_MEMORY-1) {
-		//	LOG_MSG("Memory sizes above %d MB are NOT recommended.",SAFE_MEMORY - 1);
-		//	LOG_MSG("Stick with the default values unless you are absolutely certain.");
+			LOG_MSG("Memory sizes above %d MB are NOT recommended.",SAFE_MEMORY - 1);
+			LOG_MSG("Stick with the default values unless you are absolutely certain.");
 		}
-		MemBase = new(std::nothrow) Bit8u[memsize*1024*1024];
-		if (!MemBase) E_Exit("Can't allocate main memory of %" sBitfs(d) " MB",memsize);
+		MemBase = new Bit8u[memsize*1024*1024];
+		if (!MemBase) E_Exit("Can't allocate main memory of %d MB",memsize);
 		/* Clear the memory, as new doesn't always give zeroed memory
 		 * (Visual C debug mode). We want zeroed memory though. */
 		memset((void*)MemBase,0,memsize*1024*1024);

@@ -1695,7 +1695,6 @@ private:
 		else if (!strcasecmp(omode,"opl2")) opl_mode=OPL_opl2;
 		else if (!strcasecmp(omode,"dualopl2")) opl_mode=OPL_dualopl2;
 		else if (!strcasecmp(omode,"opl3")) opl_mode=OPL_opl3;
-		else if (!strcasecmp(omode,"opl3gold")) opl_mode=OPL_opl3gold;
 		/* Else assume auto */
 		else {
 			switch (type) {
@@ -1748,8 +1747,7 @@ public:
 		// fall-through
 		case OPL_dualopl2:
 		case OPL_opl3:
-		case OPL_opl3gold:
-			OPL_Init(section,oplmode);
+
 			break;
 		}
 		if (sb.type==SBT_NONE || sb.type==SBT_GB) return;
@@ -1804,8 +1802,7 @@ public:
 		// fall-through
 		case OPL_dualopl2:
 		case OPL_opl3:
-		case OPL_opl3gold:
-			OPL_ShutDown(m_configuration);
+
 			break;
 		}
 		if (sb.type==SBT_NONE || sb.type==SBT_GB) return;

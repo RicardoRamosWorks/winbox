@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,11 +11,12 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+/* $Id: core_prefetch.cpp,v 1.3 2009-06-26 16:43:30 c2woody Exp $ */
 
 #include <stdio.h>
 
@@ -29,9 +30,7 @@
 #include "fpu.h"
 #include "paging.h"
 
-#if C_DEBUG
-#include "debug.h"
-#endif
+
 
 #if (!C_CORE_INLINE)
 #define LoadMb(off) mem_readb(off)
@@ -40,7 +39,7 @@
 #define SaveMb(off,val)	mem_writeb(off,val)
 #define SaveMw(off,val)	mem_writew(off,val)
 #define SaveMd(off,val)	mem_writed(off,val)
-#else
+#else 
 #include "paging.h"
 #define LoadMb(off) mem_readb_inline(off)
 #define LoadMw(off) mem_readw_inline(off)
@@ -58,8 +57,6 @@ extern Bitu cycle_count;
 
 #define CPU_PIC_CHECK 1
 #define CPU_TRAP_CHECK 1
-
-#define CPU_TRAP_DECODER	CPU_Core_Prefetch_Trap_Run
 
 #define OPCODE_NONE			0x000
 #define OPCODE_0F			0x100
@@ -90,7 +87,7 @@ extern Bitu cycle_count;
 
 typedef PhysPt (*GetEAHandler)(void);
 
-static const Bit32u AddrMaskTable[2]= {0x0000ffff,0xffffffff};
+static const Bit32u AddrMaskTable[2]={0x0000ffff,0xffffffff};
 
 static struct {
 	Bitu opcode_index;
@@ -121,7 +118,7 @@ static Bit8u Fetchb() {
 	if (pq_valid && (core.cseip>=pq_start) && (core.cseip<pq_start+CPU_PrefetchQueueSize)) {
 		temp=prefetch_buffer[core.cseip-pq_start];
 		if ((core.cseip+1>=pq_start+CPU_PrefetchQueueSize-4) &&
-		        (core.cseip+1<pq_start+CPU_PrefetchQueueSize)) {
+			(core.cseip+1<pq_start+CPU_PrefetchQueueSize)) {
 			Bitu remaining_bytes=pq_start+CPU_PrefetchQueueSize-(core.cseip+1);
 			for (Bitu i=0; i<remaining_bytes; i++) prefetch_buffer[i]=prefetch_buffer[core.cseip+1-pq_start+i];
 			for (Bitu i=remaining_bytes; i<CPU_PrefetchQueueSize; i++) prefetch_buffer[i]=LoadMb(core.cseip+1+i);
@@ -134,9 +131,9 @@ static Bit8u Fetchb() {
 		pq_valid=true;
 		temp=prefetch_buffer[0];
 	}
-	/*	if (temp!=LoadMb(core.cseip)) {
-			LOG_MSG("prefetch queue content!=memory at %x:%x",SegValue(cs),reg_eip);
-		} */
+/*	if (temp!=LoadMb(core.cseip)) {
+		LOG_MSG("prefetch queue content!=memory at %x:%x",SegValue(cs),reg_eip);
+	} */
 	core.cseip+=1;
 	return temp;
 }
@@ -145,9 +142,9 @@ static Bit16u Fetchw() {
 	Bit16u temp;
 	if (pq_valid && (core.cseip>=pq_start) && (core.cseip+2<pq_start+CPU_PrefetchQueueSize)) {
 		temp=prefetch_buffer[core.cseip-pq_start]|
-		     (prefetch_buffer[core.cseip-pq_start+1]<<8);
+			(prefetch_buffer[core.cseip-pq_start+1]<<8);
 		if ((core.cseip+2>=pq_start+CPU_PrefetchQueueSize-4) &&
-		        (core.cseip+2<pq_start+CPU_PrefetchQueueSize)) {
+			(core.cseip+2<pq_start+CPU_PrefetchQueueSize)) {
 			Bitu remaining_bytes=pq_start+CPU_PrefetchQueueSize-(core.cseip+2);
 			for (Bitu i=0; i<remaining_bytes; i++) prefetch_buffer[i]=prefetch_buffer[core.cseip+2-pq_start+i];
 			for (Bitu i=remaining_bytes; i<CPU_PrefetchQueueSize; i++) prefetch_buffer[i]=LoadMb(core.cseip+2+i);
@@ -160,9 +157,9 @@ static Bit16u Fetchw() {
 		pq_valid=true;
 		temp=prefetch_buffer[0] | (prefetch_buffer[1]<<8);
 	}
-	/*	if (temp!=LoadMw(core.cseip)) {
-			LOG_MSG("prefetch queue content!=memory at %x:%x",SegValue(cs),reg_eip);
-		} */
+/*	if (temp!=LoadMw(core.cseip)) {
+		LOG_MSG("prefetch queue content!=memory at %x:%x",SegValue(cs),reg_eip);
+	} */
 	core.cseip+=2;
 	return temp;
 }
@@ -171,11 +168,11 @@ static Bit32u Fetchd() {
 	Bit32u temp;
 	if (pq_valid && (core.cseip>=pq_start) && (core.cseip+4<pq_start+CPU_PrefetchQueueSize)) {
 		temp=prefetch_buffer[core.cseip-pq_start]|
-		     (prefetch_buffer[core.cseip-pq_start+1]<<8)|
-		     (prefetch_buffer[core.cseip-pq_start+2]<<16)|
-		     (prefetch_buffer[core.cseip-pq_start+3]<<24);
+			(prefetch_buffer[core.cseip-pq_start+1]<<8)|
+			(prefetch_buffer[core.cseip-pq_start+2]<<16)|
+			(prefetch_buffer[core.cseip-pq_start+3]<<24);
 		if ((core.cseip+4>=pq_start+CPU_PrefetchQueueSize-4) &&
-		        (core.cseip+4<pq_start+CPU_PrefetchQueueSize)) {
+			(core.cseip+4<pq_start+CPU_PrefetchQueueSize)) {
 			Bitu remaining_bytes=pq_start+CPU_PrefetchQueueSize-(core.cseip+4);
 			for (Bitu i=0; i<remaining_bytes; i++) prefetch_buffer[i]=prefetch_buffer[core.cseip+4-pq_start+i];
 			for (Bitu i=remaining_bytes; i<CPU_PrefetchQueueSize; i++) prefetch_buffer[i]=LoadMb(core.cseip+4+i);
@@ -187,11 +184,11 @@ static Bit32u Fetchd() {
 		pq_start=core.cseip;
 		pq_valid=true;
 		temp=prefetch_buffer[0] | (prefetch_buffer[1]<<8) |
-		     (prefetch_buffer[2]<<16) | (prefetch_buffer[3]<<24);
+			(prefetch_buffer[2]<<16) | (prefetch_buffer[3]<<24);
 	}
-	/*	if (temp!=LoadMd(core.cseip)) {
-			LOG_MSG("prefetch queue content!=memory at %x:%x",SegValue(cs),reg_eip);
-		} */
+/*	if (temp!=LoadMd(core.cseip)) {
+		LOG_MSG("prefetch queue content!=memory at %x:%x",SegValue(cs),reg_eip);
+	} */
 	core.cseip+=4;
 	return temp;
 }
@@ -236,29 +233,15 @@ restart_opcode:
 		invalidate_pq=false;
 		if (core.opcode_index&OPCODE_0F) invalidate_pq=true;
 		else switch (next_opcode) {
-			case 0x70:
-			case 0x71:
-			case 0x72:
-			case 0x73:
-			case 0x74:
-			case 0x75:
-			case 0x76:
-			case 0x77:
-			case 0x78:
-			case 0x79:
-			case 0x7a:
-			case 0x7b:
-			case 0x7c:
-			case 0x7d:
-			case 0x7e:
-			case 0x7f:	// jcc
+			case 0x70:	case 0x71:	case 0x72:	case 0x73:
+			case 0x74:	case 0x75:	case 0x76:	case 0x77:
+			case 0x78:	case 0x79:	case 0x7a:	case 0x7b:
+			case 0x7c:	case 0x7d:	case 0x7e:	case 0x7f:	// jcc
 			case 0x9a:	// call
-			case 0xc2:
-			case 0xc3:	// retn
+			case 0xc2:	case 0xc3:	// retn
 			case 0xc8:	// enter
 			case 0xc9:	// leave
-			case 0xca:
-			case 0xcb:	// retf
+			case 0xca:	case 0xcb:	// retf
 			case 0xcc:	// int3
 			case 0xcd:	// int
 			case 0xce:	// into
@@ -268,30 +251,27 @@ restart_opcode:
 			case 0xe2:	// loop
 			case 0xe3:	// jcxz
 			case 0xe8:	// call
-			case 0xe9:
-			case 0xea:
-			case 0xeb:	// jmp
+			case 0xe9:	case 0xea:	case 0xeb:	// jmp
 			case 0xff:
 				invalidate_pq=true;
 				break;
 			default:
 				break;
-			}
+		}
 		switch (core.opcode_index+next_opcode) {
-#include "core_normal/prefix_none.h"
-#include "core_normal/prefix_0f.h"
-#include "core_normal/prefix_66.h"
-#include "core_normal/prefix_66_0f.h"
+		#include "core_normal/prefix_none.h"
+		#include "core_normal/prefix_0f.h"
+		#include "core_normal/prefix_66.h"
+		#include "core_normal/prefix_66_0f.h"
 		default:
-illegal_opcode:
-#if C_DEBUG
+		illegal_opcode:
+#if C_DEBUG	
 			{
 				Bitu len=(GETIP-reg_eip);
 				LOADIP;
 				if (len>16) len=16;
-				char tempcode[16*2+1];
-				char * writecode=tempcode;
-				for (; len>0; len--) {
+				char tempcode[16*2+1];char * writecode=tempcode;
+				for (;len>0;len--) {
 					sprintf(writecode,"%02X",mem_readb(core.cseip++));
 					writecode+=2;
 				}
@@ -318,7 +298,7 @@ Bits CPU_Core_Prefetch_Trap_Run(void) {
 	cpu.trap_skip = false;
 
 	Bits ret=CPU_Core_Prefetch_Run();
-	if (!cpu.trap_skip) CPU_DebugException(DBINT_STEP,reg_eip);
+	if (!cpu.trap_skip) CPU_HW_Interrupt(1);
 	CPU_Cycles = oldCycles-1;
 	cpudecoder = &CPU_Core_Prefetch_Run;
 

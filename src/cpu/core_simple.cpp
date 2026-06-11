@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,9 +11,9 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 #include <stdio.h>
@@ -27,9 +27,7 @@
 #include "pic.h"
 #include "fpu.h"
 
-#if C_DEBUG
-#include "debug.h"
-#endif
+
 
 #include "paging.h"
 #define SegBase(c)	SegPhys(c)
@@ -49,8 +47,6 @@ extern Bitu cycle_count;
 
 #define CPU_PIC_CHECK 1
 #define CPU_TRAP_CHECK 1
-
-#define CPU_TRAP_DECODER	CPU_Core_Simple_Trap_Run
 
 #define OPCODE_NONE			0x000
 #define OPCODE_0F			0x100
@@ -81,7 +77,7 @@ extern Bitu cycle_count;
 
 typedef PhysPt (*GetEAHandler)(void);
 
-static const Bit32u AddrMaskTable[2]= {0x0000ffff,0xffffffff};
+static const Bit32u AddrMaskTable[2]={0x0000ffff,0xffffffff};
 
 static struct {
 	Bitu opcode_index;
@@ -155,21 +151,20 @@ Bits CPU_Core_Simple_Run(void) {
 restart_opcode:
 		switch (core.opcode_index+Fetchb()) {
 
-#include "core_normal/prefix_none.h"
-#include "core_normal/prefix_0f.h"
-#include "core_normal/prefix_66.h"
-#include "core_normal/prefix_66_0f.h"
+		#include "core_normal/prefix_none.h"
+		#include "core_normal/prefix_0f.h"
+		#include "core_normal/prefix_66.h"
+		#include "core_normal/prefix_66_0f.h"
 		default:
-illegal_opcode:
-#if C_DEBUG
+		illegal_opcode:
+#if C_DEBUG	
 			{
 				Bitu len=(GETIP-reg_eip);
 				LOADIP;
 				if (len>16) len=16;
-				char tempcode[16*2+1];
-				char * writecode=tempcode;
-				for (; len>0; len--) {
-					//					sprintf(writecode,"%X",mem_readb(core.cseip++));
+				char tempcode[16*2+1];char * writecode=tempcode;
+				for (;len>0;len--) {
+//					sprintf(writecode,"%X",mem_readb(core.cseip++));
 					writecode+=2;
 				}
 				LOG(LOG_CPU,LOG_NORMAL)("Illegal/Unhandled opcode %s",tempcode);
@@ -188,13 +183,14 @@ decode_end:
 	return CBRET_NONE;
 }
 
+// not really used
 Bits CPU_Core_Simple_Trap_Run(void) {
 	Bits oldCycles = CPU_Cycles;
 	CPU_Cycles = 1;
 	cpu.trap_skip = false;
 
-	Bits ret=CPU_Core_Simple_Run();
-	if (!cpu.trap_skip) CPU_DebugException(DBINT_STEP,reg_eip);
+	Bits ret=CPU_Core_Normal_Run();
+	if (!cpu.trap_skip) CPU_HW_Interrupt(1);
 	CPU_Cycles = oldCycles-1;
 	cpudecoder = &CPU_Core_Simple_Run;
 

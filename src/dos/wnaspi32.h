@@ -1,20 +1,3 @@
-/*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
 /******************************************************************************
 **
 **  Module Name:    wnaspi32.h
@@ -130,18 +113,18 @@ extern "C" {
 //*****************************************************************************
 
 typedef struct                                  // Offset
-{	// HX/DEC
-	BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_HA_INQUIRY
-	BYTE        SRB_Status;                     // 01/001 ASPI command status byte
-	BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
-	BYTE        SRB_Flags;                      // 03/003 ASPI request flags
-	DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved, MUST = 0
-	BYTE        HA_Count;                       // 08/008 Number of host adapters present
-	BYTE        HA_SCSI_ID;                     // 09/009 SCSI ID of host adapter
-	BYTE        HA_ManagerId[16];               // 0A/010 String describing the manager
-	BYTE        HA_Identifier[16];              // 1A/026 String describing the host adapter
-	BYTE        HA_Unique[16];                  // 2A/042 Host Adapter Unique parameters
-	WORD        HA_Rsvd1;                       // 3A/058 Reserved, MUST = 0
+{                                               // HX/DEC
+    BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_HA_INQUIRY
+    BYTE        SRB_Status;                     // 01/001 ASPI command status byte
+    BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
+    BYTE        SRB_Flags;                      // 03/003 ASPI request flags
+    DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved, MUST = 0
+    BYTE        HA_Count;                       // 08/008 Number of host adapters present
+    BYTE        HA_SCSI_ID;                     // 09/009 SCSI ID of host adapter
+    BYTE        HA_ManagerId[16];               // 0A/010 String describing the manager
+    BYTE        HA_Identifier[16];              // 1A/026 String describing the host adapter
+    BYTE        HA_Unique[16];                  // 2A/042 Host Adapter Unique parameters
+    WORD        HA_Rsvd1;                       // 3A/058 Reserved, MUST = 0
 }
 SRB_HAInquiry, *PSRB_HAInquiry, FAR *LPSRB_HAInquiry;
 
@@ -150,16 +133,16 @@ SRB_HAInquiry, *PSRB_HAInquiry, FAR *LPSRB_HAInquiry;
 //*****************************************************************************
 
 typedef struct                                  // Offset
-{	// HX/DEC
-	BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_GET_DEV_TYPE
-	BYTE        SRB_Status;                     // 01/001 ASPI command status byte
-	BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
-	BYTE        SRB_Flags;                      // 03/003 Reserved, MUST = 0
-	DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved, MUST = 0
-	BYTE        SRB_Target;                     // 08/008 Target's SCSI ID
-	BYTE        SRB_Lun;                        // 09/009 Target's LUN number
-	BYTE        SRB_DeviceType;                 // 0A/010 Target's peripheral device type
-	BYTE        SRB_Rsvd1;                      // 0B/011 Reserved, MUST = 0
+{                                               // HX/DEC
+    BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_GET_DEV_TYPE
+    BYTE        SRB_Status;                     // 01/001 ASPI command status byte
+    BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
+    BYTE        SRB_Flags;                      // 03/003 Reserved, MUST = 0
+    DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved, MUST = 0
+    BYTE        SRB_Target;                     // 08/008 Target's SCSI ID
+    BYTE        SRB_Lun;                        // 09/009 Target's LUN number
+    BYTE        SRB_DeviceType;                 // 0A/010 Target's peripheral device type
+    BYTE        SRB_Rsvd1;                      // 0B/011 Reserved, MUST = 0
 }
 SRB_GDEVBlock, *PSRB_GDEVBlock, FAR *LPSRB_GDEVBlock;
 
@@ -168,25 +151,25 @@ SRB_GDEVBlock, *PSRB_GDEVBlock, FAR *LPSRB_GDEVBlock;
 //*****************************************************************************
 
 typedef struct                                  // Offset
-{	// HX/DEC
-	BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_EXEC_SCSI_CMD
-	BYTE        SRB_Status;                     // 01/001 ASPI command status byte
-	BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
-	BYTE        SRB_Flags;                      // 03/003 ASPI request flags
-	DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved
-	BYTE        SRB_Target;                     // 08/008 Target's SCSI ID
-	BYTE        SRB_Lun;                        // 09/009 Target's LUN number
-	WORD        SRB_Rsvd1;                      // 0A/010 Reserved for Alignment
-	DWORD       SRB_BufLen;                     // 0C/012 Data Allocation Length
-	BYTE        FAR *SRB_BufPointer;            // 10/016 Data Buffer Pointer
-	BYTE        SRB_SenseLen;                   // 14/020 Sense Allocation Length
-	BYTE        SRB_CDBLen;                     // 15/021 CDB Length
-	BYTE        SRB_HaStat;                     // 16/022 Host Adapter Status
-	BYTE        SRB_TargStat;                   // 17/023 Target Status
-	VOID        FAR *SRB_PostProc;              // 18/024 Post routine
-	BYTE        SRB_Rsvd2[20];                  // 1C/028 Reserved, MUST = 0
-	BYTE        CDBByte[16];                    // 30/048 SCSI CDB
-	BYTE        SenseArea[SENSE_LEN+2];         // 50/064 Request Sense buffer
+{                                               // HX/DEC
+    BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_EXEC_SCSI_CMD
+    BYTE        SRB_Status;                     // 01/001 ASPI command status byte
+    BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
+    BYTE        SRB_Flags;                      // 03/003 ASPI request flags
+    DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved
+    BYTE        SRB_Target;                     // 08/008 Target's SCSI ID
+    BYTE        SRB_Lun;                        // 09/009 Target's LUN number
+    WORD        SRB_Rsvd1;                      // 0A/010 Reserved for Alignment
+    DWORD       SRB_BufLen;                     // 0C/012 Data Allocation Length
+    BYTE        FAR *SRB_BufPointer;            // 10/016 Data Buffer Pointer
+    BYTE        SRB_SenseLen;                   // 14/020 Sense Allocation Length
+    BYTE        SRB_CDBLen;                     // 15/021 CDB Length
+    BYTE        SRB_HaStat;                     // 16/022 Host Adapter Status
+    BYTE        SRB_TargStat;                   // 17/023 Target Status
+    VOID        FAR *SRB_PostProc;              // 18/024 Post routine
+    BYTE        SRB_Rsvd2[20];                  // 1C/028 Reserved, MUST = 0
+    BYTE        CDBByte[16];                    // 30/048 SCSI CDB
+    BYTE        SenseArea[SENSE_LEN+2];         // 50/064 Request Sense buffer
 }
 SRB_ExecSCSICmd, *PSRB_ExecSCSICmd, FAR *LPSRB_ExecSCSICmd;
 
@@ -195,13 +178,13 @@ SRB_ExecSCSICmd, *PSRB_ExecSCSICmd, FAR *LPSRB_ExecSCSICmd;
 //*****************************************************************************
 
 typedef struct                                  // Offset
-{	// HX/DEC
-	BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_ABORT_SRB
-	BYTE        SRB_Status;                     // 01/001 ASPI command status byte
-	BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
-	BYTE        SRB_Flags;                      // 03/003 Reserved
-	DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved
-	VOID        FAR *SRB_ToAbort;               // 08/008 Pointer to SRB to abort
+{                                               // HX/DEC
+    BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_ABORT_SRB
+    BYTE        SRB_Status;                     // 01/001 ASPI command status byte
+    BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
+    BYTE        SRB_Flags;                      // 03/003 Reserved
+    DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved
+    VOID        FAR *SRB_ToAbort;               // 08/008 Pointer to SRB to abort
 }
 SRB_Abort, *PSRB_Abort, FAR *LPSRB_Abort;
 
@@ -210,19 +193,19 @@ SRB_Abort, *PSRB_Abort, FAR *LPSRB_Abort;
 //*****************************************************************************
 
 typedef struct                                  // Offset
-{	// HX/DEC
-	BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_RESET_DEV
-	BYTE        SRB_Status;                     // 01/001 ASPI command status byte
-	BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
-	BYTE        SRB_Flags;                      // 03/003 ASPI request flags
-	DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved
-	BYTE        SRB_Target;                     // 08/008 Target's SCSI ID
-	BYTE        SRB_Lun;                        // 09/009 Target's LUN number
-	BYTE        SRB_Rsvd1[12];                  // 0A/010 Reserved for Alignment
-	BYTE        SRB_HaStat;                     // 16/022 Host Adapter Status
-	BYTE        SRB_TargStat;                   // 17/023 Target Status
-	VOID        FAR *SRB_PostProc;              // 18/024 Post routine
-	BYTE        SRB_Rsvd2[36];                  // 1C/028 Reserved, MUST = 0
+{                                               // HX/DEC
+    BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_RESET_DEV
+    BYTE        SRB_Status;                     // 01/001 ASPI command status byte
+    BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
+    BYTE        SRB_Flags;                      // 03/003 ASPI request flags
+    DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved
+    BYTE        SRB_Target;                     // 08/008 Target's SCSI ID
+    BYTE        SRB_Lun;                        // 09/009 Target's LUN number
+    BYTE        SRB_Rsvd1[12];                  // 0A/010 Reserved for Alignment
+    BYTE        SRB_HaStat;                     // 16/022 Host Adapter Status
+    BYTE        SRB_TargStat;                   // 17/023 Target Status
+    VOID        FAR *SRB_PostProc;              // 18/024 Post routine
+    BYTE        SRB_Rsvd2[36];                  // 1C/028 Reserved, MUST = 0
 }
 SRB_BusDeviceReset, *PSRB_BusDeviceReset, FAR *LPSRB_BusDeviceReset;
 
@@ -231,19 +214,19 @@ SRB_BusDeviceReset, *PSRB_BusDeviceReset, FAR *LPSRB_BusDeviceReset;
 //*****************************************************************************
 
 typedef struct                                  // Offset
-{	// HX/DEC
-	BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_GET_DISK_INFO
-	BYTE        SRB_Status;                     // 01/001 ASPI command status byte
-	BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
-	BYTE        SRB_Flags;                      // 03/003 Reserved, MUST = 0
-	DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved, MUST = 0
-	BYTE        SRB_Target;                     // 08/008 Target's SCSI ID
-	BYTE        SRB_Lun;                        // 09/009 Target's LUN number
-	BYTE        SRB_DriveFlags;                 // 0A/010 Driver flags
-	BYTE        SRB_Int13HDriveInfo;            // 0B/011 Host Adapter Status
-	BYTE        SRB_Heads;                      // 0C/012 Preferred number of heads translation
-	BYTE        SRB_Sectors;                    // 0D/013 Preferred number of sectors translation
-	BYTE        SRB_Rsvd1[10];                  // 0E/014 Reserved, MUST = 0
+{                                               // HX/DEC
+    BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_GET_DISK_INFO
+    BYTE        SRB_Status;                     // 01/001 ASPI command status byte
+    BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
+    BYTE        SRB_Flags;                      // 03/003 Reserved, MUST = 0
+    DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved, MUST = 0
+    BYTE        SRB_Target;                     // 08/008 Target's SCSI ID
+    BYTE        SRB_Lun;                        // 09/009 Target's LUN number
+    BYTE        SRB_DriveFlags;                 // 0A/010 Driver flags
+    BYTE        SRB_Int13HDriveInfo;            // 0B/011 Host Adapter Status
+    BYTE        SRB_Heads;                      // 0C/012 Preferred number of heads translation
+    BYTE        SRB_Sectors;                    // 0D/013 Preferred number of sectors translation
+    BYTE        SRB_Rsvd1[10];                  // 0E/014 Reserved, MUST = 0
 }
 SRB_GetDiskInfo, *PSRB_GetDiskInfo, FAR *LPSRB_GetDiskInfo;
 
@@ -252,12 +235,12 @@ SRB_GetDiskInfo, *PSRB_GetDiskInfo, FAR *LPSRB_GetDiskInfo;
 //*****************************************************************************
 
 typedef struct                                  // Offset
-{	// HX/DEC
-	BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_RESCAN_SCSI_BUS
-	BYTE        SRB_Status;                     // 01/001 ASPI command status byte
-	BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
-	BYTE        SRB_Flags;                      // 03/003 Reserved, MUST = 0
-	DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved, MUST = 0
+{                                               // HX/DEC
+    BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_RESCAN_SCSI_BUS
+    BYTE        SRB_Status;                     // 01/001 ASPI command status byte
+    BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
+    BYTE        SRB_Flags;                      // 03/003 Reserved, MUST = 0
+    DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved, MUST = 0
 }
 SRB_RescanPort, *PSRB_RescanPort, FAR *LPSRB_RescanPort;
 
@@ -266,15 +249,15 @@ SRB_RescanPort, *PSRB_RescanPort, FAR *LPSRB_RescanPort;
 //*****************************************************************************
 
 typedef struct                                  // Offset
-{	// HX/DEC
-	BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_GETSET_TIMEOUTS
-	BYTE        SRB_Status;                     // 01/001 ASPI command status byte
-	BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
-	BYTE        SRB_Flags;                      // 03/003 ASPI request flags
-	DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved, MUST = 0
-	BYTE        SRB_Target;                     // 08/008 Target's SCSI ID
-	BYTE        SRB_Lun;                        // 09/009 Target's LUN number
-	DWORD       SRB_Timeout;                    // 0A/010 Timeout in half seconds
+{                                               // HX/DEC
+    BYTE        SRB_Cmd;                        // 00/000 ASPI command code = SC_GETSET_TIMEOUTS
+    BYTE        SRB_Status;                     // 01/001 ASPI command status byte
+    BYTE        SRB_HaId;                       // 02/002 ASPI host adapter number
+    BYTE        SRB_Flags;                      // 03/003 ASPI request flags
+    DWORD       SRB_Hdr_Rsvd;                   // 04/004 Reserved, MUST = 0
+    BYTE        SRB_Target;                     // 08/008 Target's SCSI ID
+    BYTE        SRB_Lun;                        // 09/009 Target's LUN number
+    DWORD       SRB_Timeout;                    // 0A/010 Timeout in half seconds
 }
 SRB_GetSetTimeouts, *PSRB_GetSetTimeouts, FAR *LPSRB_GetSetTimeouts;
 
@@ -283,11 +266,11 @@ SRB_GetSetTimeouts, *PSRB_GetSetTimeouts, FAR *LPSRB_GetSetTimeouts;
 //*****************************************************************************
 
 typedef struct tag_ASPI32BUFF                   // Offset
-{	// HX/DEC
-	PBYTE                   AB_BufPointer;      // 00/000 Pointer to the ASPI allocated buffer
-	DWORD                   AB_BufLen;          // 04/004 Length in bytes of the buffer
-	DWORD                   AB_ZeroFill;        // 08/008 Flag set to 1 if buffer should be zeroed
-	DWORD                   AB_Reserved;        // 0C/012 Reserved
+{                                               // HX/DEC
+    PBYTE                   AB_BufPointer;      // 00/000 Pointer to the ASPI allocated buffer
+    DWORD                   AB_BufLen;          // 04/004 Length in bytes of the buffer
+    DWORD                   AB_ZeroFill;        // 08/008 Flag set to 1 if buffer should be zeroed
+    DWORD                   AB_Reserved;        // 0C/012 Reserved
 }
 ASPI32BUFF, *PASPI32BUFF, FAR *LPASPI32BUFF;
 
@@ -297,32 +280,32 @@ ASPI32BUFF, *PASPI32BUFF, FAR *LPASPI32BUFF;
 
 typedef struct
 {
-	unsigned char  reserved1;
-	unsigned char  cAdrCtrl;
-	unsigned char  cTrackNum;
-	unsigned char  reserved2;
-	unsigned long  lAddr;
+ unsigned char  reserved1;
+ unsigned char  cAdrCtrl;
+ unsigned char  cTrackNum;
+ unsigned char  reserved2;
+ unsigned long  lAddr;
 } TOC_TRACK;
 
 typedef struct
 {
-	unsigned short usTocDataLen;
-	unsigned char  cFirstTrack;
-	unsigned char  cLastTrack;
-	TOC_TRACK      tracks[100];
+ unsigned short usTocDataLen;
+ unsigned char  cFirstTrack;
+ unsigned char  cLastTrack;
+ TOC_TRACK      tracks[100];
 } TOC, *PTOC, FAR *LPTOC;
 
 //*****************************************************************************
 //          %%% PROTOTYPES - User Callable ASPI for Win32 Functions %%%
 //*****************************************************************************
 
-typedef struct
+typedef struct 
 {
-	BYTE      SRB_Cmd;
-	BYTE      SRB_Status;
-	BYTE      SRB_HaId;
-	BYTE      SRB_Flags;
-	DWORD     SRB_Hdr_Rsvd;
+  BYTE      SRB_Cmd;
+  BYTE      SRB_Status;
+  BYTE      SRB_HaId;
+  BYTE      SRB_Flags;
+  DWORD     SRB_Hdr_Rsvd;
 } SRB, *PSRB, FAR *LPSRB;
 
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,15 +11,15 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+/* $Id: xms.cpp,v 1.55 2009-05-27 09:15:42 qbix79 Exp $ */
 
 #include <stdlib.h>
 #include <string.h>
-#include <stddef.h>
 #include "dosbox.h"
 #include "callback.h"
 #include "mem.h"
@@ -30,7 +30,7 @@
 #include "xms.h"
 #include "bios.h"
 
-#define XMS_HANDLES							50		/* 50 XMS Memory Blocks */
+#define XMS_HANDLES							50		/* 50 XMS Memory Blocks */ 
 #define XMS_VERSION    						0x0300	/* version 3.00 */
 #define XMS_DRIVER_VERSION					0x0301	/* my driver version 3.01 */
 
@@ -84,7 +84,7 @@ struct XMS_Block {
 #ifdef _MSC_VER
 #pragma pack (1)
 #endif
-struct XMS_MemMove {
+struct XMS_MemMove{
 	Bit32u length;
 	Bit16u src_handle;
 	union {
@@ -203,7 +203,7 @@ Bitu XMS_MoveMemory(PhysPt bpt) {
 	} else {
 		destpt=Real2Phys(dest.realpt);
 	}
-	//	LOG_MSG("XMS move src %X dest %X length %X",srcpt,destpt,length);
+//	LOG_MSG("XMS move src %X dest %X length %X",srcpt,destpt,length);
 	mem_memcpy(destpt,srcpt,length);
 	return 0;
 }
@@ -216,7 +216,7 @@ Bitu XMS_LockMemory(Bitu handle, Bit32u& address) {
 }
 
 Bitu XMS_UnlockMemory(Bitu handle) {
-	if (InvalidHandle(handle)) return XMS_INVALID_HANDLE;
+ 	if (InvalidHandle(handle)) return XMS_INVALID_HANDLE;
 	if (xms_handles[handle].locked) {
 		xms_handles[handle].locked--;
 		return 0;
@@ -229,7 +229,7 @@ Bitu XMS_GetHandleInformation(Bitu handle, Bit8u& lockCount, Bit8u& numFree, Bit
 	lockCount = xms_handles[handle].locked;
 	/* Find available blocks */
 	numFree=0;
-	for (Bitu i=1; i<XMS_HANDLES; i++) {
+	for (Bitu i=1;i<XMS_HANDLES;i++) {
 		if (xms_handles[i].free) numFree++;
 	}
 	size=(Bit16u)(xms_handles[handle].size);
@@ -237,7 +237,7 @@ Bitu XMS_GetHandleInformation(Bitu handle, Bit8u& lockCount, Bit8u& numFree, Bit
 }
 
 Bitu XMS_ResizeMemory(Bitu handle, Bitu newSize) {
-	if (InvalidHandle(handle)) return XMS_INVALID_HANDLE;
+	if (InvalidHandle(handle)) return XMS_INVALID_HANDLE;	
 	// Block has to be unlocked
 	if (xms_handles[handle].locked>0) return XMS_BLOCK_LOCKED;
 	Bitu pages=newSize/4 + ((newSize & 3) ? 1 : 0);
@@ -250,12 +250,12 @@ Bitu XMS_ResizeMemory(Bitu handle, Bitu newSize) {
 static bool multiplex_xms(void) {
 	switch (reg_ax) {
 	case 0x4300:					/* XMS installed check */
-		reg_al=0x80;
-		return true;
+			reg_al=0x80;
+			return true;
 	case 0x4310:					/* XMS handler seg:offset */
-		SegSet16(es,RealSeg(xms_callback));
-		reg_bx=RealOff(xms_callback);
-		return true;
+			SegSet16(es,RealSeg(xms_callback));
+			reg_bx=RealOff(xms_callback);
+			return true;			
 	}
 	return false;
 
@@ -267,7 +267,7 @@ INLINE void SET_RESULT(Bitu res,bool touch_bl_on_succes=true) {
 }
 
 Bitu XMS_Handler(void) {
-	//	LOG(LOG_MISC,LOG_ERROR)("XMS: CALL %02X",reg_ah);
+//	LOG(LOG_MISC,LOG_ERROR)("XMS: CALL %02X",reg_ah);
 	switch (reg_ah) {
 	case XMS_GET_VERSION:										/* 00 */
 		reg_ax=XMS_VERSION;
@@ -282,7 +282,7 @@ Bitu XMS_Handler(void) {
 		reg_ax=0;
 		reg_bl=HIGH_MEMORY_NOT_EXIST;
 		break;
-
+		
 	case XMS_GLOBAL_ENABLE_A20:									/* 03 */
 	case XMS_LOCAL_ENABLE_A20:									/* 05 */
 		SET_RESULT(XMS_EnableA20(true));
@@ -290,7 +290,7 @@ Bitu XMS_Handler(void) {
 	case XMS_GLOBAL_DISABLE_A20:								/* 04 */
 	case XMS_LOCAL_DISABLE_A20:									/* 06 */
 		SET_RESULT(XMS_EnableA20(false));
-		break;
+		break;	
 	case XMS_QUERY_A20:											/* 07 */
 		reg_ax = XMS_GetEnabledA20();
 		reg_bl = 0;
@@ -300,14 +300,13 @@ Bitu XMS_Handler(void) {
 		break;
 	case XMS_ALLOCATE_ANY_MEMORY:								/* 89 */
 		reg_edx &= 0xffff;
-	// fall through
+		// fall through
 	case XMS_ALLOCATE_EXTENDED_MEMORY:							/* 09 */
-	{
+		{
 		Bit16u handle = 0;
 		SET_RESULT(XMS_AllocateMemory(reg_dx,handle));
 		reg_dx = handle;
-	};
-	break;
+		}; break;
 	case XMS_FREE_EXTENDED_MEMORY:								/* 0a */
 		SET_RESULT(XMS_FreeMemory(reg_dx));
 		break;
@@ -323,8 +322,7 @@ Bitu XMS_Handler(void) {
 			reg_bx=(Bit16u)(address & 0xFFFF);
 			reg_dx=(Bit16u)(address >> 16);
 		};
-	};
-	break;
+		}; break;
 	case XMS_UNLOCK_EXTENDED_MEMORY_BLOCK:						/* 0d */
 		SET_RESULT(XMS_UnlockMemory(reg_dx));
 		break;
@@ -333,7 +331,7 @@ Bitu XMS_Handler(void) {
 		break;
 	case XMS_RESIZE_ANY_EXTENDED_MEMORY_BLOCK:					/* 0x8f */
 		if(reg_ebx > reg_bx) LOG_MSG("64MB memory limit!");
-	//fall through
+		//fall through
 	case XMS_RESIZE_EXTENDED_MEMORY_BLOCK:						/* 0f */
 		SET_RESULT(XMS_ResizeMemory(reg_dx, reg_bx));
 		break;
@@ -357,8 +355,7 @@ Bitu XMS_Handler(void) {
 		Bit8u old_memstrat=DOS_GetMemAllocStrategy()&0xff;
 		DOS_SetMemAllocStrategy(0x40);	// search in UMBs only
 
-		Bit16u size=reg_dx;
-		Bit16u seg;
+		Bit16u size=reg_dx;Bit16u seg;
 		if (DOS_AllocateMemory(&seg,&size)) {
 			reg_ax=1;
 			reg_bx=seg;
@@ -373,8 +370,8 @@ Bitu XMS_Handler(void) {
 		Bit8u current_umb_flag=dos_infoblock.GetUMBChainState();
 		if ((current_umb_flag&1)!=(umb_flag&1)) DOS_LinkUMBsToMemChain(umb_flag);
 		DOS_SetMemAllocStrategy(old_memstrat);
-	}
-	break;
+		}
+		break;
 	case XMS_DEALLOCATE_UMB:									/* 11 */
 		if (!umb_available) {
 			reg_ax=0;
@@ -405,24 +402,21 @@ Bitu XMS_Handler(void) {
 			reg_cx = free_handles;
 		}
 		reg_ax = (result==0);
-	}
-	break;
+		} break;
 	default:
 		LOG(LOG_MISC,LOG_ERROR)("XMS: unknown function %02X",reg_ah);
 		reg_ax=0;
 		reg_bl=XMS_FUNCTION_NOT_IMPLEMENTED;
 	}
-	//	LOG(LOG_MISC,LOG_ERROR)("XMS: CALL Result: %02X",reg_bl);
+//	LOG(LOG_MISC,LOG_ERROR)("XMS: CALL Result: %02X",reg_bl);
 	return CBRET_NONE;
 }
-
-Bitu GetEMSType(Section_prop * section);
 
 class XMS: public Module_base {
 private:
 	CALLBACK_HandlerObject callbackhandler;
 public:
-	XMS(Section* configuration):Module_base(configuration) {
+	XMS(Section* configuration):Module_base(configuration){
 		Section_prop * section=static_cast<Section_prop *>(configuration);
 		umb_available=false;
 		if (!section->Get_bool("xms")) return;
@@ -439,8 +433,8 @@ public:
 		//	label skip:
 		//	callback XMS_Handler
 		//	retf
-
-		for (i=0; i<XMS_HANDLES; i++) {
+	   
+		for (i=0;i<XMS_HANDLES;i++) {
 			xms_handles[i].free=true;
 			xms_handles[i].mem=-1;
 			xms_handles[i].size=0;
@@ -451,11 +445,10 @@ public:
 
 		/* Set up UMB chain */
 		umb_available=section->Get_bool("umb");
-		bool ems_available = GetEMSType(section)>0;
-		DOS_BuildUMBChain(section->Get_bool("umb"),ems_available);
+		DOS_BuildUMBChain(section->Get_bool("umb"),section->Get_bool("ems"));
 	}
 
-	~XMS() {
+	~XMS(){
 		Section_prop * section = static_cast<Section_prop *>(m_configuration);
 		/* Remove upper memory information */
 		dos_infoblock.SetStartOfUMBChain(0xffff);
@@ -472,7 +465,7 @@ public:
 		DOS_DelMultiplexHandler(multiplex_xms);
 
 		/* Free used memory while skipping the 0 handle */
-		for (Bitu i = 1; i<XMS_HANDLES; i++)
+		for (Bitu i = 1;i<XMS_HANDLES;i++) 
 			if(!xms_handles[i].free) XMS_FreeMemory(i);
 	}
 
@@ -480,7 +473,7 @@ public:
 static XMS* test;
 
 void XMS_ShutDown(Section* /*sec*/) {
-	delete test;
+	delete test;	
 }
 
 void XMS_Init(Section* sec) {

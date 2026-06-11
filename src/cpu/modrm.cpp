@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,9 +11,9 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 #include "cpu.h"
@@ -58,7 +58,7 @@ Bit8u * lookupRMregb[]=
 	&reg_bh,&reg_bh,&reg_bh,&reg_bh,&reg_bh,&reg_bh,&reg_bh,&reg_bh
 };
 
-Bit16u * lookupRMregw[]= {
+Bit16u * lookupRMregw[]={
 	&reg_ax,&reg_ax,&reg_ax,&reg_ax,&reg_ax,&reg_ax,&reg_ax,&reg_ax,
 	&reg_cx,&reg_cx,&reg_cx,&reg_cx,&reg_cx,&reg_cx,&reg_cx,&reg_cx,
 	&reg_dx,&reg_dx,&reg_dx,&reg_dx,&reg_dx,&reg_dx,&reg_dx,&reg_dx,
@@ -96,7 +96,7 @@ Bit16u * lookupRMregw[]= {
 	&reg_di,&reg_di,&reg_di,&reg_di,&reg_di,&reg_di,&reg_di,&reg_di
 };
 
-Bit32u * lookupRMregd[256]= {
+Bit32u * lookupRMregd[256]={
 	&reg_eax,&reg_eax,&reg_eax,&reg_eax,&reg_eax,&reg_eax,&reg_eax,&reg_eax,
 	&reg_ecx,&reg_ecx,&reg_ecx,&reg_ecx,&reg_ecx,&reg_ecx,&reg_ecx,&reg_ecx,
 	&reg_edx,&reg_edx,&reg_edx,&reg_edx,&reg_edx,&reg_edx,&reg_edx,&reg_edx,
@@ -135,8 +135,8 @@ Bit32u * lookupRMregd[256]= {
 };
 
 
-Bit8u * lookupRMEAregb[256]= {
-	/* 12 lines of 16*0 should give nice errors when used */
+Bit8u * lookupRMEAregb[256]={
+/* 12 lines of 16*0 should give nice errors when used */
 	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,
@@ -159,8 +159,8 @@ Bit8u * lookupRMEAregb[256]= {
 	&reg_al,&reg_cl,&reg_dl,&reg_bl,&reg_ah,&reg_ch,&reg_dh,&reg_bh
 };
 
-Bit16u * lookupRMEAregw[256]= {
-	/* 12 lines of 16*0 should give nice errors when used */
+Bit16u * lookupRMEAregw[256]={
+/* 12 lines of 16*0 should give nice errors when used */
 	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,
@@ -183,8 +183,8 @@ Bit16u * lookupRMEAregw[256]= {
 	&reg_ax,&reg_cx,&reg_dx,&reg_bx,&reg_sp,&reg_bp,&reg_si,&reg_di
 };
 
-Bit32u * lookupRMEAregd[256]= {
-	/* 12 lines of 16*0 should give nice errors when used */
+Bit32u * lookupRMEAregd[256]={
+/* 12 lines of 16*0 should give nice errors when used */
 	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,

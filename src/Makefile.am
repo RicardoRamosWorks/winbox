@@ -1,6 +1,6 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include
 
-SUBDIRS = cpu dos fpu gui hardware libs ints misc shell platform
+SUBDIRS = cpu dos fpu gui hardware ints misc shell platform 
 
 bin_PROGRAMS = dosbox
 
@@ -17,4 +17,4 @@ dosbox_LDADD = cpu/libcpu.a dos/libdos.a fpu/libfpu.a  hardware/libhardware.a gu
 
 EXTRA_DIST = winres.rc dosbox.ico
 
-LIBS +=  
+

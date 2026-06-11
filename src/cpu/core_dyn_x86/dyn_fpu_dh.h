@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,36 +11,22 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-/*
- * dyn_fpu_dh.h - Otimizado para Pentium M Dothan
- *
- * Modo DH (Dynamic Hardware): usa instruções FPU reais do processador
- * Pentium M Dothan FPU:
- * - FLD/FST: 2-3 ciclos (L1 cache hit)
- * - FADD/FMUL: 3-5 ciclos
- * - FDIV: ~18-34 ciclos
- * - FSQRT: ~30-40 ciclos
- * - Transcendentais (FSIN, FCOS): microcoded, muito lentos
- */
+
+/* $Id: dyn_fpu_dh.h,v 1.7 2009-09-23 20:55:19 c2woody Exp $ */
 
 #include "dosbox.h"
 #if C_FPU
 
-/*
- * Funções de acesso à memória FPU
- * Otimizadas: removidos casts redundantes
- * Pentium M: mem_read/write em L1 cache é ~3 ciclos
- */
 static void FPU_FLD_16(PhysPt addr) {
 	dyn_dh_fpu.temp.m1 = (Bit32u)mem_readw(addr);
 }
 
 static void FPU_FST_16(PhysPt addr) {
-	mem_writew(addr, (Bit16u)dyn_dh_fpu.temp.m1);
+	mem_writew(addr,(Bit16u)dyn_dh_fpu.temp.m1);
 }
 
 static void FPU_FLD_32(PhysPt addr) {
@@ -48,125 +34,100 @@ static void FPU_FLD_32(PhysPt addr) {
 }
 
 static void FPU_FST_32(PhysPt addr) {
-	mem_writed(addr, dyn_dh_fpu.temp.m1);
+	mem_writed(addr,dyn_dh_fpu.temp.m1);
 }
 
 static void FPU_FLD_64(PhysPt addr) {
 	dyn_dh_fpu.temp.m1 = mem_readd(addr);
-	dyn_dh_fpu.temp.m2 = mem_readd(addr + 4);
+	dyn_dh_fpu.temp.m2 = mem_readd(addr+4);
 }
 
 static void FPU_FST_64(PhysPt addr) {
-	mem_writed(addr, dyn_dh_fpu.temp.m1);
-	mem_writed(addr + 4, dyn_dh_fpu.temp.m2);
+	mem_writed(addr,dyn_dh_fpu.temp.m1);
+	mem_writed(addr+4,dyn_dh_fpu.temp.m2);
 }
 
 static void FPU_FLD_80(PhysPt addr) {
 	dyn_dh_fpu.temp.m1 = mem_readd(addr);
-	dyn_dh_fpu.temp.m2 = mem_readd(addr + 4);
-	dyn_dh_fpu.temp.m3 = mem_readw(addr + 8);
+	dyn_dh_fpu.temp.m2 = mem_readd(addr+4);
+	dyn_dh_fpu.temp.m3 = mem_readw(addr+8);
 }
 
 static void FPU_FST_80(PhysPt addr) {
-	mem_writed(addr, dyn_dh_fpu.temp.m1);
-	mem_writed(addr + 4, dyn_dh_fpu.temp.m2);
-	mem_writew(addr + 8, dyn_dh_fpu.temp.m3);
+	mem_writed(addr,dyn_dh_fpu.temp.m1);
+	mem_writed(addr+4,dyn_dh_fpu.temp.m2);
+	mem_writew(addr+8,dyn_dh_fpu.temp.m3);
 }
 
-static void FPU_FLDCW_DH(PhysPt addr) {
+static void FPU_FLDCW_DH(PhysPt addr){
 	dyn_dh_fpu.cw = mem_readw(addr);
-	dyn_dh_fpu.temp.m1 = (Bit32u)(dyn_dh_fpu.cw | 0x3f);
+	dyn_dh_fpu.temp.m1 = (Bit32u)(dyn_dh_fpu.cw|0x3f);
 }
 
-static void FPU_FNSTCW_DH(PhysPt addr) {
-	mem_writew(addr, (Bit16u)(dyn_dh_fpu.cw & 0xffff));
+static void FPU_FNSTCW_DH(PhysPt addr){
+	mem_writew(addr,(Bit16u)(dyn_dh_fpu.cw&0xffff));
 }
 
-static void FPU_FNINIT_DH(void) {
+static void FPU_FNINIT_DH(void){
 	dyn_dh_fpu.cw = 0x37f;
 }
 
-/*
- * FPU_FSTENV_DH - Otimizado: usa mem_writed para 32-bit quando possível
- * Pentium M: escritas alinhadas 32-bit são mais rápidas que 2x 16-bit
- */
-static void FPU_FSTENV_DH(PhysPt addr) {
-	if (!cpu.code.big) {
-		/* 16-bit mode: 3 words */
-		mem_writew(addr + 0, (Bit16u)dyn_dh_fpu.cw);
-		mem_writew(addr + 2, (Bit16u)dyn_dh_fpu.temp.m2);
-		mem_writew(addr + 4, dyn_dh_fpu.temp.m3);
-	} else {
-		/* 32-bit mode: usa dword writes quando alinhado */
-		mem_writed(addr + 0, dyn_dh_fpu.temp.m1);
-		mem_writew(addr + 0, (Bit16u)dyn_dh_fpu.cw);  /* sobrescreve low word */
-		mem_writed(addr + 4, dyn_dh_fpu.temp.m2);
-		mem_writed(addr + 8, dyn_dh_fpu.temp.m3);
+static void FPU_FSTENV_DH(PhysPt addr){
+	if(!cpu.code.big) {
+		mem_writew(addr+0,(Bit16u)dyn_dh_fpu.cw);
+		mem_writew(addr+2,(Bit16u)dyn_dh_fpu.temp.m2);
+		mem_writew(addr+4,dyn_dh_fpu.temp.m3);
+	} else { 
+		mem_writed(addr+0,dyn_dh_fpu.temp.m1);
+		mem_writew(addr+0,(Bit16u)dyn_dh_fpu.cw);
+		mem_writed(addr+4,dyn_dh_fpu.temp.m2);
+		mem_writed(addr+8,dyn_dh_fpu.temp.m3);
 	}
 }
 
-static void FPU_FLDENV_DH(PhysPt addr) {
-	if (!cpu.code.big) {
+static void FPU_FLDENV_DH(PhysPt addr){
+	if(!cpu.code.big) {
 		dyn_dh_fpu.cw = (Bit32u)mem_readw(addr);
-		dyn_dh_fpu.temp.m1 = dyn_dh_fpu.cw | 0x3f;
-		dyn_dh_fpu.temp.m2 = (Bit32u)mem_readw(addr + 2);
-		dyn_dh_fpu.temp.m3 = mem_readw(addr + 4);
-	} else {
+		dyn_dh_fpu.temp.m1 = dyn_dh_fpu.cw|0x3f;
+		dyn_dh_fpu.temp.m2 = (Bit32u)mem_readw(addr+2);
+		dyn_dh_fpu.temp.m3 = mem_readw(addr+4);
+	} else { 
 		dyn_dh_fpu.cw = (Bit32u)mem_readw(addr);
-		dyn_dh_fpu.temp.m1 = mem_readd(addr) | 0x3f;
-		dyn_dh_fpu.temp.m2 = mem_readd(addr + 4);
-		dyn_dh_fpu.temp.m3 = mem_readw(addr + 8);
-		dyn_dh_fpu.temp.d1 = mem_readw(addr + 10);
+		dyn_dh_fpu.temp.m1 = mem_readd(addr)|0x3f;
+		dyn_dh_fpu.temp.m2 = mem_readd(addr+4);
+		dyn_dh_fpu.temp.m3 = mem_readw(addr+8);
+		dyn_dh_fpu.temp.d1 = mem_readw(addr+10);
 	}
 }
 
-/*
- * FPU_FSAVE_DH - Otimizado com loops desenrolados para cache
- * Pentium M: prefetch automático ajuda em acessos sequenciais
- */
-static void FPU_FSAVE_DH(PhysPt addr) {
+static void FPU_FSAVE_DH(PhysPt addr){
 	if (!cpu.code.big) {
-		mem_writew(addr, (Bit16u)dyn_dh_fpu.cw);
-		addr += 2;
-
-		/* Desenrolado manualmente para melhor uso do pipeline */
-		mem_writeb(addr++, dyn_dh_fpu.temp_state[0x04]);
-		mem_writeb(addr++, dyn_dh_fpu.temp_state[0x05]);
-		mem_writeb(addr++, dyn_dh_fpu.temp_state[0x08]);
-		mem_writeb(addr++, dyn_dh_fpu.temp_state[0x09]);
-		mem_writeb(addr++, dyn_dh_fpu.temp_state[0x0c]);
-		mem_writeb(addr++, dyn_dh_fpu.temp_state[0x0d]);
-		mem_writeb(addr++, dyn_dh_fpu.temp_state[0x10]);
-		mem_writeb(addr++, dyn_dh_fpu.temp_state[0x11]);
-		mem_writeb(addr++, dyn_dh_fpu.temp_state[0x14]);
-		mem_writeb(addr++, dyn_dh_fpu.temp_state[0x15]);
-		mem_writeb(addr++, dyn_dh_fpu.temp_state[0x18]);
-		mem_writeb(addr++, dyn_dh_fpu.temp_state[0x19]);
-
-		/* Loop para o resto - prefetch implícito do Pentium M ajuda */
-		for (Bitu i = 28; i < 108; i++) {
-			mem_writeb(addr++, dyn_dh_fpu.temp_state[i]);
-		}
+		mem_writew(addr,(Bit16u)dyn_dh_fpu.cw);
+		addr+=2;
+		mem_writeb(addr++,dyn_dh_fpu.temp_state[0x04]);
+		mem_writeb(addr++,dyn_dh_fpu.temp_state[0x05]);
+		mem_writeb(addr++,dyn_dh_fpu.temp_state[0x08]);
+		mem_writeb(addr++,dyn_dh_fpu.temp_state[0x09]);
+		mem_writeb(addr++,dyn_dh_fpu.temp_state[0x0c]);
+		mem_writeb(addr++,dyn_dh_fpu.temp_state[0x0d]);
+		mem_writeb(addr++,dyn_dh_fpu.temp_state[0x10]);
+		mem_writeb(addr++,dyn_dh_fpu.temp_state[0x11]);
+		mem_writeb(addr++,dyn_dh_fpu.temp_state[0x14]);
+		mem_writeb(addr++,dyn_dh_fpu.temp_state[0x15]);
+		mem_writeb(addr++,dyn_dh_fpu.temp_state[0x18]);
+		mem_writeb(addr++,dyn_dh_fpu.temp_state[0x19]);
+		for(Bitu i=28;i<108;i++) mem_writeb(addr++,dyn_dh_fpu.temp_state[i]);
 	} else {
-		mem_writew(addr, (Bit16u)dyn_dh_fpu.cw);
-		addr += 2;
-
-		/* 32-bit mode: usa mem_writed quando alinhado para performance */
-		Bit8u *state = dyn_dh_fpu.temp_state;
-		for (Bitu i = 2; i < 108; i++) {
-			mem_writeb(addr++, state[i]);
-		}
+		mem_writew(addr,(Bit16u)dyn_dh_fpu.cw);
+		addr+=2;
+		for(Bitu i=2;i<108;i++) mem_writeb(addr++,dyn_dh_fpu.temp_state[i]);
 	}
 }
 
-/*
- * FPU_FRSTOR_DH - Otimizado similarmente
- */
-static void FPU_FRSTOR_DH(PhysPt addr) {
+static void FPU_FRSTOR_DH(PhysPt addr){
 	if (!cpu.code.big) {
 		dyn_dh_fpu.cw = (Bit32u)mem_readw(addr);
-		/* Nota: addr+0 já foi lido, começamos de addr+2 */
-		dyn_dh_fpu.temp_state[0x00] = mem_readb(addr++) | 0x3f;
+		dyn_dh_fpu.temp_state[0x00] = mem_readb(addr++)|0x3f;
 		dyn_dh_fpu.temp_state[0x01] = mem_readb(addr++);
 		dyn_dh_fpu.temp_state[0x04] = mem_readb(addr++);
 		dyn_dh_fpu.temp_state[0x05] = mem_readb(addr++);
@@ -180,315 +141,355 @@ static void FPU_FRSTOR_DH(PhysPt addr) {
 		dyn_dh_fpu.temp_state[0x15] = mem_readb(addr++);
 		dyn_dh_fpu.temp_state[0x18] = mem_readb(addr++);
 		dyn_dh_fpu.temp_state[0x19] = mem_readb(addr++);
-
-		for (Bitu i = 28; i < 108; i++) {
-			dyn_dh_fpu.temp_state[i] = mem_readb(addr++);
-		}
+		for(Bitu i=28;i<108;i++) dyn_dh_fpu.temp_state[i] = mem_readb(addr++);
 	} else {
 		dyn_dh_fpu.cw = (Bit32u)mem_readw(addr);
-		for (Bitu i = 0; i < 108; i++) {
-			dyn_dh_fpu.temp_state[i] = mem_readb(addr++);
-		}
-		dyn_dh_fpu.temp_state[0] |= 0x3f;
+		for(Bitu i=0;i<108;i++) dyn_dh_fpu.temp_state[i] = mem_readb(addr++);
+		dyn_dh_fpu.temp_state[0]|=0x3f;
 	}
 }
 
-/*
- * dh_fpu_mem - Gera instrução FPU com operando em memória
- * Otimizado: função inline para reduzir overhead de chamada
- */
-static inline void dh_fpu_mem(Bit8u inst, Bitu reg = decode.modrm.reg, void* mem = &dyn_dh_fpu.temp.m1) {
-#if C_TARGETCPU == X86
-	cache_addb(inst);
-	cache_addb(0x05 | (reg << 3));
-	cache_addd((Bit32u)(mem));
-#else // X86_64
-	opcode(reg).setabsaddr(mem).Emit8(inst);
-#endif
-}
-
-/*
- * Macros para padrões comuns de FPU
- * Reduzem código duplicado e melhoram consistência
- */
-
-/* Padrão: carregar de memória, executar operação FPU */
-#define DH_FPU_LOAD_OP(size_func, esc_byte) \
-	dyn_fill_ea(); \
-	gen_call_function((void*)&FPU_FLD_##size_func, "%Drd", DREG(EA)); \
-	dh_fpu_mem(esc_byte)
-
-/* Padrão: executar operação FPU, armazenar na memória */
-#define DH_FPU_OP_STORE(size_func, esc_byte) \
-	dyn_fill_ea(); \
-	dh_fpu_mem(esc_byte); \
-	gen_call_function((void*)&FPU_FST_##size_func, "%Drd", DREG(EA))
-
-/* Padrão: operação registrador-registrador */
-#define DH_FPU_REGOP(esc_byte) \
-	cache_addb(esc_byte); \
-	cache_addb(decode.modrm.val)
-
-static void dh_fpu_esc0() {
-	dyn_get_modrm();
+static void dh_fpu_esc0(){
+	dyn_get_modrm(); 
 	if (decode.modrm.val >= 0xc0) {
-		DH_FPU_REGOP(0xd8);
-	} else {
-		DH_FPU_LOAD_OP(32, 0xd8);
-	}
-}
-
-static void dh_fpu_esc1() {
-	dyn_get_modrm();
-	if (decode.modrm.val >= 0xc0) {
-		DH_FPU_REGOP(0xd9);
-	} else {
-		Bitu group = (decode.modrm.val >> 3) & 7;
-		Bitu sub = (decode.modrm.val & 7);
+		cache_addb(0xd8);
+		cache_addb(decode.modrm.val);
+	} else { 
 		dyn_fill_ea();
+		gen_call_function((void*)&FPU_FLD_32,"%Ddr",DREG(EA)); 
+		cache_addb(0xd8);
+		cache_addb(0x05|(decode.modrm.reg<<3));
+		cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+	}
+}
 
-		switch (group) {
-		case 0x00: /* FLD float */
-			gen_call_function((void*)&FPU_FLD_32, "%Drd", DREG(EA));
-			dh_fpu_mem(0xd9);
+static void dh_fpu_esc1(){
+	dyn_get_modrm();  
+	if (decode.modrm.val >= 0xc0) {
+		cache_addb(0xd9);
+		cache_addb(decode.modrm.val);
+	} else {
+		Bitu group=(decode.modrm.val >> 3) & 7;
+		Bitu sub=(decode.modrm.val & 7);
+		dyn_fill_ea(); 
+		switch(group){
+		case 0x00: /* FLD float*/
+			gen_call_function((void*)&FPU_FLD_32,"%Ddr",DREG(EA));
+			cache_addb(0xd9);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
 			break;
 		case 0x01: /* UNKNOWN */
-			FPU_LOG_WARN(1, true, group, sub);
+			LOG(LOG_FPU,LOG_WARN)("ESC EA 1:Unhandled group %d subfunction %d",group,sub);
 			break;
-		case 0x02: /* FST float */
-			dh_fpu_mem(0xd9);
-			gen_call_function((void*)&FPU_FST_32, "%Drd", DREG(EA));
+		case 0x02: /* FST float*/
+			cache_addb(0xd9);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+			gen_call_function((void*)&FPU_FST_32,"%Ddr",DREG(EA));
 			break;
-		case 0x03: /* FSTP float */
-			dh_fpu_mem(0xd9);
-			gen_call_function((void*)&FPU_FST_32, "%Drd", DREG(EA));
+		case 0x03: /* FSTP float*/
+			cache_addb(0xd9);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+			gen_call_function((void*)&FPU_FST_32,"%Ddr",DREG(EA));
 			break;
 		case 0x04: /* FLDENV */
-			gen_call_function((void*)&FPU_FLDENV_DH, "%Drd", DREG(EA));
-			dh_fpu_mem(0xd9);
+			gen_call_function((void*)&FPU_FLDENV_DH,"%Ddr",DREG(EA));
+			cache_addb(0xd9);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
 			break;
 		case 0x05: /* FLDCW */
-			gen_call_function((void*)&FPU_FLDCW_DH, "%Drd", DREG(EA));
-			dh_fpu_mem(0xd9);
+			gen_call_function((void *)&FPU_FLDCW_DH,"%Ddr",DREG(EA));
+			cache_addb(0xd9);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
 			break;
 		case 0x06: /* FSTENV */
-			dh_fpu_mem(0xd9);
-			gen_call_function((void*)&FPU_FSTENV_DH, "%Drd", DREG(EA));
+			cache_addb(0xd9);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+			gen_call_function((void*)&FPU_FSTENV_DH,"%Ddr",DREG(EA));
 			break;
-		case 0x07: /* FNSTCW */
-			gen_call_function((void*)&FPU_FNSTCW_DH, "%Drd", DREG(EA));
+		case 0x07:  /* FNSTCW*/
+			gen_call_function((void*)&FPU_FNSTCW_DH,"%Ddr",DREG(EA));
 			break;
 		default:
-			FPU_LOG_WARN(1, true, group, sub);
+			LOG(LOG_FPU,LOG_WARN)("ESC EA 1:Unhandled group %d subfunction %d",group,sub);
 			break;
 		}
 	}
 }
 
-static void dh_fpu_esc2() {
-	dyn_get_modrm();
-	if (decode.modrm.val >= 0xc0) {
-		DH_FPU_REGOP(0xda);
+static void dh_fpu_esc2(){
+	dyn_get_modrm();  
+	if (decode.modrm.val >= 0xc0) { 
+		cache_addb(0xda);
+		cache_addb(decode.modrm.val);
 	} else {
-		DH_FPU_LOAD_OP(32, 0xda);
+		dyn_fill_ea(); 
+		gen_call_function((void*)&FPU_FLD_32,"%Ddr",DREG(EA)); 
+		cache_addb(0xda);
+		cache_addb(0x05|(decode.modrm.reg<<3));
+		cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
 	}
 }
 
-static void dh_fpu_esc3() {
-	dyn_get_modrm();
-	if (decode.modrm.val >= 0xc0) {
-		Bitu group = (decode.modrm.val >> 3) & 7;
-		Bitu sub = (decode.modrm.val & 7);
-
+static void dh_fpu_esc3(){
+	dyn_get_modrm();  
+	if (decode.modrm.val >= 0xc0) { 
+		Bitu group=(decode.modrm.val >> 3) & 7;
+		Bitu sub=(decode.modrm.val & 7);
 		switch (group) {
 		case 0x04:
 			switch (sub) {
-			case 0x00: /* FNENI */
-			case 0x01: /* FNDIS */
-				LOG(LOG_FPU, LOG_ERROR)("8087 only fpu code used esc 3: group 4: subfuntion :%" sBitfs(d), sub);
+			case 0x00:				//FNENI
+			case 0x01:				//FNDIS
+				LOG(LOG_FPU,LOG_ERROR)("8087 only fpu code used esc 3: group 4: subfuntion :%d",sub);
 				break;
-			case 0x02: /* FNCLEX FCLEX */
-				DH_FPU_REGOP(0xdb);
+			case 0x02:				//FNCLEX FCLEX
+				cache_addb(0xdb);
+				cache_addb(decode.modrm.val);
 				break;
-			case 0x03: /* FNINIT FINIT */
-				gen_call_function((void*)&FPU_FNINIT_DH, "");
-				DH_FPU_REGOP(0xdb);
+			case 0x03:				//FNINIT FINIT
+				gen_call_function((void*)&FPU_FNINIT_DH,""); 
+				cache_addb(0xdb);
+				cache_addb(decode.modrm.val);
 				break;
-			case 0x04: /* FNSETPM */
-			case 0x05: /* FRSTPM */
+			case 0x04:				//FNSETPM
+			case 0x05:				//FRSTPM
+//				LOG(LOG_FPU,LOG_ERROR)("80267 protected mode (un)set. Nothing done");
 				break;
 			default:
-				E_Exit("ESC 3:ILLEGAL OPCODE group %" sBitfs(d) " subfunction %" sBitfs(d), group, sub);
+				E_Exit("ESC 3:ILLEGAL OPCODE group %d subfunction %d",group,sub);
 			}
 			break;
 		default:
-			FPU_LOG_WARN(3, false, group, sub);
+			LOG(LOG_FPU,LOG_WARN)("ESC 3:Unhandled group %d subfunction %d",group,sub);
 			break;
 		}
 	} else {
-		Bitu group = (decode.modrm.val >> 3) & 7;
-		Bitu sub = (decode.modrm.val & 7);
-		dyn_fill_ea();
-
-		switch (group) {
-		case 0x00: /* FILD */
-			gen_call_function((void*)&FPU_FLD_32, "%Drd", DREG(EA));
-			dh_fpu_mem(0xdb);
+		Bitu group=(decode.modrm.val >> 3) & 7;
+		Bitu sub=(decode.modrm.val & 7);
+		dyn_fill_ea(); 
+		switch(group){
+		case 0x00:	/* FILD */
+			gen_call_function((void*)&FPU_FLD_32,"%Ddr",DREG(EA));
+			cache_addb(0xdb);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
 			break;
-		case 0x01: /* FISTTP */
-			FPU_LOG_WARN(3, true, 1, sub);
+		case 0x01:	/* FISTTP */
+			LOG(LOG_FPU,LOG_WARN)("ESC 3 EA:Unhandled group %d subfunction %d",group,sub);
 			break;
-		case 0x02: /* FIST */
-			dh_fpu_mem(0xdb);
-			gen_call_function((void*)&FPU_FST_32, "%Drd", DREG(EA));
+		case 0x02:	/* FIST */
+			cache_addb(0xdb);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+			gen_call_function((void*)&FPU_FST_32,"%Ddr",DREG(EA));
 			break;
-		case 0x03: /* FISTP */
-			dh_fpu_mem(0xdb);
-			gen_call_function((void*)&FPU_FST_32, "%Drd", DREG(EA));
+		case 0x03:	/* FISTP */
+			cache_addb(0xdb);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+			gen_call_function((void*)&FPU_FST_32,"%Ddr",DREG(EA));
 			break;
-		case 0x05: /* FLD 80 Bits Real */
-			gen_call_function((void*)&FPU_FLD_80, "%Drd", DREG(EA));
-			dh_fpu_mem(0xdb);
+		case 0x05:	/* FLD 80 Bits Real */
+			gen_call_function((void*)&FPU_FLD_80,"%Ddr",DREG(EA));
+			cache_addb(0xdb);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
 			break;
-		case 0x07: /* FSTP 80 Bits Real */
-			dh_fpu_mem(0xdb);
-			gen_call_function((void*)&FPU_FST_80, "%Drd", DREG(EA));
+		case 0x07:	/* FSTP 80 Bits Real */
+			cache_addb(0xdb);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+			gen_call_function((void*)&FPU_FST_80,"%Ddr",DREG(EA));
 			break;
 		default:
-			FPU_LOG_WARN(3, true, group, sub);
-			break;
+			LOG(LOG_FPU,LOG_WARN)("ESC 3 EA:Unhandled group %d subfunction %d",group,sub);
 		}
 	}
 }
 
-static void dh_fpu_esc4() {
-	dyn_get_modrm();
-	if (decode.modrm.val >= 0xc0) {
-		DH_FPU_REGOP(0xdc);
-	} else {
-		DH_FPU_LOAD_OP(64, 0xdc);
+static void dh_fpu_esc4(){
+	dyn_get_modrm();  
+	Bitu group=(decode.modrm.val >> 3) & 7;
+	Bitu sub=(decode.modrm.val & 7);
+	if (decode.modrm.val >= 0xc0) { 
+		cache_addb(0xdc);
+		cache_addb(decode.modrm.val);
+	} else { 
+		dyn_fill_ea(); 
+		gen_call_function((void*)&FPU_FLD_64,"%Ddr",DREG(EA)); 
+		cache_addb(0xdc);
+		cache_addb(0x05|(decode.modrm.reg<<3));
+		cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
 	}
 }
 
-static void dh_fpu_esc5() {
-	dyn_get_modrm();
-	if (decode.modrm.val >= 0xc0) {
-		DH_FPU_REGOP(0xdd);
+static void dh_fpu_esc5(){
+	dyn_get_modrm();  
+	if (decode.modrm.val >= 0xc0) { 
+		cache_addb(0xdd);
+		cache_addb(decode.modrm.val);
 	} else {
-		Bitu group = (decode.modrm.val >> 3) & 7;
-		Bitu sub = (decode.modrm.val & 7);
-		dyn_fill_ea();
-
-		switch (group) {
-		case 0x00: /* FLD double real */
-			gen_call_function((void*)&FPU_FLD_64, "%Drd", DREG(EA));
-			dh_fpu_mem(0xdd);
+		dyn_fill_ea(); 
+		Bitu group=(decode.modrm.val >> 3) & 7;
+		Bitu sub=(decode.modrm.val & 7);
+		switch(group){
+		case 0x00:  /* FLD double real*/
+			gen_call_function((void*)&FPU_FLD_64,"%Ddr",DREG(EA));
+			cache_addb(0xdd);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
 			break;
-		case 0x01: /* FISTTP longint */
-			FPU_LOG_WARN(5, true, 1, sub);
+		case 0x01:  /* FISTTP longint*/
+			LOG(LOG_FPU,LOG_WARN)("ESC 5 EA:Unhandled group %d subfunction %d",group,sub);
 			break;
-		case 0x02: /* FST double real */
-			dh_fpu_mem(0xdd);
-			gen_call_function((void*)&FPU_FST_64, "%Drd", DREG(EA));
+		case 0x02:   /* FST double real*/
+			cache_addb(0xdd);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+			gen_call_function((void*)&FPU_FST_64,"%Ddr",DREG(EA));
 			break;
-		case 0x03: /* FSTP double real */
-			dh_fpu_mem(0xdd);
-			gen_call_function((void*)&FPU_FST_64, "%Drd", DREG(EA));
+		case 0x03:	/* FSTP double real*/
+			cache_addb(0xdd);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+			gen_call_function((void*)&FPU_FST_64,"%Ddr",DREG(EA));
 			break;
-		case 0x04: /* FRSTOR */
-			gen_call_function((void*)&FPU_FRSTOR_DH, "%Drd", DREG(EA));
-			dh_fpu_mem(0xdd, decode.modrm.reg, &(dyn_dh_fpu.temp_state[0]));
+		case 0x04:	/* FRSTOR */
+			gen_call_function((void*)&FPU_FRSTOR_DH,"%Ddr",DREG(EA));
+			cache_addb(0xdd);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp_state[0])));
 			break;
-		case 0x06: /* FSAVE */
-			dh_fpu_mem(0xdd, decode.modrm.reg, &(dyn_dh_fpu.temp_state[0]));
-			gen_call_function((void*)&FPU_FSAVE_DH, "%Drd", DREG(EA));
-			cache_addw(0xE3DB);  /* FNINIT após FSAVE (comportamento x87) */
+		case 0x06:	/* FSAVE */
+			cache_addb(0xdd);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp_state[0])));
+			gen_call_function((void*)&FPU_FSAVE_DH,"%Ddr",DREG(EA));
+			cache_addb(0xdb);
+			cache_addb(0xe3);
 			break;
-		case 0x07: /* FNSTSW */
-			dh_fpu_mem(0xdd);
-			gen_call_function((void*)&FPU_FST_16, "%Drd", DREG(EA));
+		case 0x07:   /* FNSTSW */
+			cache_addb(0xdd);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+			gen_call_function((void*)&FPU_FST_16,"%Ddr",DREG(EA));
 			break;
 		default:
-			FPU_LOG_WARN(5, true, group, sub);
-			break;
+			LOG(LOG_FPU,LOG_WARN)("ESC 5 EA:Unhandled group %d subfunction %d",group,sub);
 		}
 	}
 }
 
-static void dh_fpu_esc6() {
-	dyn_get_modrm();
-	if (decode.modrm.val >= 0xc0) {
-		DH_FPU_REGOP(0xde);
+static void dh_fpu_esc6(){
+	dyn_get_modrm();  
+	Bitu group=(decode.modrm.val >> 3) & 7;
+	Bitu sub=(decode.modrm.val & 7);
+	if (decode.modrm.val >= 0xc0) { 
+		cache_addb(0xde);
+		cache_addb(decode.modrm.val);
 	} else {
-		DH_FPU_LOAD_OP(16, 0xde);
+		dyn_fill_ea(); 
+		gen_call_function((void*)&FPU_FLD_16,"%Ddr",DREG(EA)); 
+		cache_addb(0xde);
+		cache_addb(0x05|(decode.modrm.reg<<3));
+		cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
 	}
 }
 
-static void dh_fpu_esc7() {
-	dyn_get_modrm();
-	Bitu group = (decode.modrm.val >> 3) & 7;
-	Bitu sub = (decode.modrm.val & 7);
-
-	if (decode.modrm.val >= 0xc0) {
-		switch (group) {
-		case 0x00: /* FFREEP STi */
-		case 0x01: /* FXCH STi */
-		case 0x02: /* FSTP STi */
-		case 0x03: /* FSTP STi */
-			DH_FPU_REGOP(0xdf);
+static void dh_fpu_esc7(){
+	dyn_get_modrm();  
+	Bitu group=(decode.modrm.val >> 3) & 7;
+	Bitu sub=(decode.modrm.val & 7);
+	if (decode.modrm.val >= 0xc0) { 
+		switch (group){
+		case 0x00: /* FFREEP STi*/
+			cache_addb(0xdf);
+			cache_addb(decode.modrm.val);
+			break;
+		case 0x01: /* FXCH STi*/
+			cache_addb(0xdf);
+			cache_addb(decode.modrm.val);
+			break;
+		case 0x02:  /* FSTP STi*/
+		case 0x03:  /* FSTP STi*/
+			cache_addb(0xdf);
+			cache_addb(decode.modrm.val);
 			break;
 		case 0x04:
-			if (sub == 0x00) {
-				/* FNSTSW AX - otimizado: evita load/store extra */
-				dh_fpu_mem(0xdd, 7);
-				gen_load_host(&(dyn_dh_fpu.temp.m1), DREG(TMPB), 4);
-				gen_dop_word(DOP_MOV, false, DREG(EAX), DREG(TMPB));
-				gen_releasereg(DREG(TMPB));
-			} else {
-				FPU_LOG_WARN(7, false, 4, sub);
+			switch(sub){
+				case 0x00:     /* FNSTSW AX*/
+					cache_addb(0xdd);
+					cache_addb(0x05|(0x07<<3));
+					cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+					gen_load_host(&(dyn_dh_fpu.temp.m1),DREG(TMPB),4);
+					gen_dop_word(DOP_MOV,false,DREG(EAX),DREG(TMPB));
+					gen_releasereg(DREG(TMPB));
+					break;
+				default:
+					LOG(LOG_FPU,LOG_WARN)("ESC 7:Unhandled group %d subfunction %d",group,sub);
+					break;
 			}
 			break;
 		default:
-			FPU_LOG_WARN(7, false, group, sub);
+			LOG(LOG_FPU,LOG_WARN)("ESC 7:Unhandled group %d subfunction %d",group,sub);
 			break;
 		}
 	} else {
-		dyn_fill_ea();
-
-		switch (group) {
-		case 0x00: /* FILD Bit16s */
-			gen_call_function((void*)&FPU_FLD_16, "%Drd", DREG(EA));
-			dh_fpu_mem(0xdf);
+		dyn_fill_ea(); 
+		switch(group){
+		case 0x00:  /* FILD Bit16s */
+			gen_call_function((void*)&FPU_FLD_16,"%Ddr",DREG(EA));
+			cache_addb(0xdf);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
 			break;
 		case 0x01:
-			FPU_LOG_WARN(7, true, 1, sub);
+			LOG(LOG_FPU,LOG_WARN)("ESC 7 EA:Unhandled group %d subfunction %d",group,sub);
 			break;
-		case 0x02: /* FIST Bit16s */
-			dh_fpu_mem(0xdf);
-			gen_call_function((void*)&FPU_FST_16, "%Drd", DREG(EA));
+		case 0x02:   /* FIST Bit16s */
+			cache_addb(0xdf);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+			gen_call_function((void*)&FPU_FST_16,"%Ddr",DREG(EA));
 			break;
-		case 0x03: /* FISTP Bit16s */
-			dh_fpu_mem(0xdf);
-			gen_call_function((void*)&FPU_FST_16, "%Drd", DREG(EA));
+		case 0x03:	/* FISTP Bit16s */
+			cache_addb(0xdf);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+			gen_call_function((void*)&FPU_FST_16,"%Ddr",DREG(EA));
 			break;
-		case 0x04: /* FBLD packed BCD */
-			gen_call_function((void*)&FPU_FLD_80, "%Drd", DREG(EA));
-			dh_fpu_mem(0xdf);
+		case 0x04:   /* FBLD packed BCD */
+			gen_call_function((void*)&FPU_FLD_80,"%Ddr",DREG(EA));
+			cache_addb(0xdf);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
 			break;
-		case 0x05: /* FILD Bit64s */
-			gen_call_function((void*)&FPU_FLD_64, "%Drd", DREG(EA));
-			dh_fpu_mem(0xdf);
+		case 0x05:  /* FILD Bit64s */
+			gen_call_function((void*)&FPU_FLD_64,"%Ddr",DREG(EA));
+			cache_addb(0xdf);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
 			break;
-		case 0x06: /* FBSTP packed BCD */
-			dh_fpu_mem(0xdf);
-			gen_call_function((void*)&FPU_FST_80, "%Drd", DREG(EA));
+		case 0x06:	/* FBSTP packed BCD */
+			cache_addb(0xdf);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+			gen_call_function((void*)&FPU_FST_80,"%Ddr",DREG(EA));
 			break;
-		case 0x07: /* FISTP Bit64s */
-			dh_fpu_mem(0xdf);
-			gen_call_function((void*)&FPU_FST_64, "%Drd", DREG(EA));
+		case 0x07:  /* FISTP Bit64s */
+			cache_addb(0xdf);
+			cache_addb(0x05|(decode.modrm.reg<<3));
+			cache_addd((Bit32u)(&(dyn_dh_fpu.temp.m1)));
+			gen_call_function((void*)&FPU_FST_64,"%Ddr",DREG(EA));
 			break;
 		default:
-			FPU_LOG_WARN(7, true, group, sub);
+			LOG(LOG_FPU,LOG_WARN)("ESC 7 EA:Unhandled group %d subfunction %d",group,sub);
 			break;
 		}
 	}

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,20 +11,20 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+/* $Id: drives.cpp,v 1.15 2009-05-27 09:15:41 qbix79 Exp $ */
 
 #include "dosbox.h"
 #include "dos_system.h"
 #include "drives.h"
-#include "bios_disk.h"
 #include "mapper.h"
 #include "support.h"
 
-bool WildFileCmp(const char * file, const char * wild)
+bool WildFileCmp(const char * file, const char * wild) 
 {
 	char file_name[9];
 	char file_ext[4];
@@ -44,12 +44,11 @@ bool WildFileCmp(const char * file, const char * wild)
 		if (size>8) size=8;
 		memcpy(file_name,file,size);
 		find_ext++;
-		memcpy(file_ext,find_ext,(strlen(find_ext)>3) ? 3 : strlen(find_ext));
+		memcpy(file_ext,find_ext,(strlen(find_ext)>3) ? 3 : strlen(find_ext)); 
 	} else {
 		memcpy(file_name,file,(strlen(file) > 8) ? 8 : strlen(file));
 	}
-	upcase(file_name);
-	upcase(file_ext);
+	upcase(file_name);upcase(file_ext);
 	find_ext=strrchr(wild,'.');
 	if (find_ext) {
 		Bitu size=(Bitu)(find_ext-wild);
@@ -60,8 +59,7 @@ bool WildFileCmp(const char * file, const char * wild)
 	} else {
 		memcpy(wild_name,wild,(strlen(wild) > 8) ? 8 : strlen(wild));
 	}
-	upcase(wild_name);
-	upcase(wild_ext);
+	upcase(wild_name);upcase(wild_ext);
 	/* Names are right do some checking */
 	r=0;
 	while (r<8) {
@@ -70,7 +68,7 @@ bool WildFileCmp(const char * file, const char * wild)
 		r++;
 	}
 checkext:
-	r=0;
+    r=0;
 	while (r<3) {
 		if (wild_ext[r]=='*') return true;
 		if (wild_ext[r]!='?' && wild_ext[r]!=file_ext[r]) return false;
@@ -90,23 +88,16 @@ void Set_Label(char const * const input, char * const output, bool cdrom) {
 
 	while (togo > 0) {
 		if (input[vnamePos]==0) break;
-		if (!point && (input[vnamePos]=='.')) {
-			togo=4;
-			point=true;
-		}
+		if (!point && (input[vnamePos]=='.')) {	togo=4; point=true; }
 
 		//another mscdex quirk. Label is not always uppercase. (Daggerfall)
 		output[labelPos] = (cdrom?input[vnamePos]:toupper(input[vnamePos]));
 
-		labelPos++;
-		vnamePos++;
+		labelPos++; vnamePos++;
 		togo--;
 		if ((togo==0) && !point) {
 			if (input[vnamePos]=='.') vnamePos++;
-			output[labelPos]='.';
-			labelPos++;
-			point=true;
-			togo=3;
+			output[labelPos]='.'; labelPos++; point=true; togo=3;
 		}
 	};
 	output[labelPos]=0;
@@ -142,14 +133,14 @@ void DriveManager::InitializeDrive(int drive) {
 		driveInfo.currentDisk = 0;
 		DOS_Drive* disk = driveInfo.disks[driveInfo.currentDisk];
 		Drives[currentDrive] = disk;
-		if (driveInfo.disks.size() > 1) disk->Activate();
+		disk->Activate();
 	}
 }
 
 /*
 void DriveManager::CycleDrive(bool pressed) {
 	if (!pressed) return;
-
+		
 	// do one round through all drives or stop at the next drive with multiple disks
 	int oldDrive = currentDrive;
 	do {
@@ -161,17 +152,17 @@ void DriveManager::CycleDrive(bool pressed) {
 
 void DriveManager::CycleDisk(bool pressed) {
 	if (!pressed) return;
-
+	
 	int numDisks = driveInfos[currentDrive].disks.size();
 	if (numDisks > 1) {
 		// cycle disk
 		int currentDisk = driveInfos[currentDrive].currentDisk;
 		DOS_Drive* oldDisk = driveInfos[currentDrive].disks[currentDisk];
-		currentDisk = (currentDisk + 1) % numDisks;
+		currentDisk = (currentDisk + 1) % numDisks;		
 		DOS_Drive* newDisk = driveInfos[currentDrive].disks[currentDisk];
 		driveInfos[currentDrive].currentDisk = currentDisk;
-
-		// copy working directory, acquire system resources and finally switch to next drive
+		
+		// copy working directory, acquire system resources and finally switch to next drive		
 		strcpy(newDisk->curdir, oldDisk->curdir);
 		newDisk->Activate();
 		Drives[currentDrive] = newDisk;
@@ -179,33 +170,24 @@ void DriveManager::CycleDisk(bool pressed) {
 }
 */
 
-void DriveManager::CycleDisks(int drive, bool notify) {
-	int numDisks = (int)driveInfos[drive].disks.size();
-	if (numDisks > 1) {
-		// cycle disk
-		int currentDisk = driveInfos[drive].currentDisk;
-		DOS_Drive* oldDisk = driveInfos[drive].disks[currentDisk];
-		currentDisk = (currentDisk + 1) % numDisks;
-		DOS_Drive* newDisk = driveInfos[drive].disks[currentDisk];
-		driveInfos[drive].currentDisk = currentDisk;
-		if (drive < MAX_DISK_IMAGES && imageDiskList[drive] != NULL) {
-			if (strncmp(newDisk->GetInfo(),"fatDrive",8) == 0)
-				imageDiskList[drive] = ((fatDrive *)newDisk)->loadedDisk;
-			else
-				imageDiskList[drive] = (imageDisk *)newDisk;
-			if ((drive == 2 || drive == 3) && imageDiskList[drive]->hardDrive) updateDPT();
-		}
-
-		// copy working directory, acquire system resources and finally switch to next drive
-		strcpy(newDisk->curdir, oldDisk->curdir);
-		newDisk->Activate();
-		Drives[drive] = newDisk;
-		//if (notify) LOG_MSG("Drive %c: disk %d of %d now active", 'A'+drive, currentDisk+1, numDisks);
-	}
-}
-
 void DriveManager::CycleAllDisks(void) {
-	for (int idrive=0; idrive<DOS_DRIVES; idrive++) CycleDisks(idrive, true);
+	for (int idrive=0; idrive<DOS_DRIVES; idrive++) {
+		int numDisks = (int)driveInfos[idrive].disks.size();
+		if (numDisks > 1) {
+			// cycle disk
+			int currentDisk = driveInfos[idrive].currentDisk;
+			DOS_Drive* oldDisk = driveInfos[idrive].disks[currentDisk];
+			currentDisk = (currentDisk + 1) % numDisks;		
+			DOS_Drive* newDisk = driveInfos[idrive].disks[currentDisk];
+			driveInfos[idrive].currentDisk = currentDisk;
+			
+			// copy working directory, acquire system resources and finally switch to next drive		
+			strcpy(newDisk->curdir, oldDisk->curdir);
+			newDisk->Activate();
+			Drives[idrive] = newDisk;
+			LOG_MSG("Drive %c: disk %d of %d now active", 'A'+idrive, currentDisk+1, numDisks);
+		}
+	}
 }
 
 int DriveManager::UnmountDrive(int drive) {
@@ -226,20 +208,20 @@ int DriveManager::UnmountDrive(int drive) {
 			driveInfos[drive].disks.clear();
 		}
 	}
-
+	
 	return result;
 }
 
 void DriveManager::Init(Section* /* sec */) {
-
+	
 	// setup driveInfos structure
 	currentDrive = 0;
 	for(int i = 0; i < DOS_DRIVES; i++) {
 		driveInfos[i].currentDisk = 0;
 	}
-
-	//	MAPPER_AddHandler(&CycleDisk, MK_f3, MMOD1, "cycledisk", "Cycle Disk");
-	//	MAPPER_AddHandler(&CycleDrive, MK_f3, MMOD2, "cycledrive", "Cycle Drv");
+	
+//	MAPPER_AddHandler(&CycleDisk, MK_f3, MMOD1, "cycledisk", "Cycle Disk");
+//	MAPPER_AddHandler(&CycleDrive, MK_f3, MMOD2, "cycledrive", "Cycle Drv");
 }
 
 void DRIVES_Init(Section* sec) {

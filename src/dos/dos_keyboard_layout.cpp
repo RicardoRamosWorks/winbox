@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,11 +11,12 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+/* $Id: dos_keyboard_layout.cpp,v 1.22 2009-09-06 19:25:33 c2woody Exp $ */
 
 #include "dosbox.h"
 #include "bios.h"
@@ -179,7 +180,7 @@ static Bit32u read_kcl_file(const char* kcl_file_name, const char* layout_id, bo
 			Bit16u lcnum=host_readw(&rbuf[0]);
 			i+=2;
 			Bitu lcpos=0;
-			for (; i<data_len;) {
+			for (;i<data_len;) {
 				fread(rbuf, sizeof(Bit8u), 1, tempfile);
 				i++;
 				if (((char)rbuf[0])==',') break;
@@ -228,7 +229,7 @@ static Bit32u read_kcl_data(Bit8u * kcl_data, Bit32u kcl_data_size, const char* 
 			Bit16u lcnum=host_readw(&kcl_data[dpos-2]);
 			i+=2;
 			Bitu lcpos=0;
-			for (; i<data_len;) {
+			for (;i<data_len;) {
 				if (dpos+1>kcl_data_size) break;
 				char lc=(char)kcl_data[dpos];
 				dpos++;
@@ -319,7 +320,7 @@ Bitu keyboard_layout::read_keyboard_file(const char* keyboard_file_name, Bit32s 
 			LOG(LOG_BIOS,LOG_ERROR)("Invalid keyboard layout file %s",keyboard_file_name);
 			return KEYB_INVALIDFILE;
 		}
-
+		
 		fseek(tempfile, 0, SEEK_SET);
 		read_buf_size=(Bit32u)fread(read_buf, sizeof(Bit8u), 65535, tempfile);
 		fclose(tempfile);
@@ -335,7 +336,7 @@ Bitu keyboard_layout::read_keyboard_file(const char* keyboard_file_name, Bit32s 
 		language_codes[language_code_count]=new char[256];
 		i+=2;
 		Bitu lcpos=0;
-		for (; i<data_len;) {
+		for (;i<data_len;) {
 			char lcode=char(read_buf[start_pos+i]);
 			i++;
 			if (lcode==',') break;
@@ -379,7 +380,7 @@ Bitu keyboard_layout::read_keyboard_file(const char* keyboard_file_name, Bit32s 
 	}
 
 	bool found_matching_layout=false;
-
+	
 	// check all submappings and use them if general submapping or same codepage submapping
 	for (Bit16u sub_map=0; (sub_map<submappings) && (!found_matching_layout); sub_map++) {
 		Bit16u submap_cp, table_offset;
@@ -442,14 +443,7 @@ Bitu keyboard_layout::read_keyboard_file(const char* keyboard_file_name, Bit32s 
 					}
 				}
 
-				// calculate max length of entries, taking into account old number of entries
-				Bit8u new_flags=current_layout[scan*layout_pages+layout_pages-1]&0x7;
-				if ((read_buf[read_buf_pos-2]&0x7) > new_flags) new_flags = read_buf[read_buf_pos-2]&0x7;
-
-				// merge flag bits in as well
-				new_flags |= (read_buf[read_buf_pos-2] | current_layout[scan*layout_pages+layout_pages-1]) & 0xf0;
-
-				current_layout[scan*layout_pages+layout_pages-1]=new_flags;
+				current_layout[scan*layout_pages+layout_pages-1]=read_buf[read_buf_pos-2];	// flags
 				if (read_buf[read_buf_pos-2]&0x80) scan_length*=2;		// granularity flag (S)
 			}
 			i+=scan_length;		// advance pointer
@@ -488,7 +482,7 @@ bool keyboard_layout::layout_key(Bitu key, Bit8u flags1, Bit8u flags2, Bit8u fla
 				// check if command-bit is set for shift plane
 				bool is_command=(current_layout[key*layout_pages+layout_pages-2]&2)!=0;
 				if (this->map_key(key, current_layout[key*layout_pages+1],
-				                  is_command, is_special_pair)) return true;
+					is_command, is_special_pair)) return true;
 			}
 		} else {
 			// normal plane
@@ -496,7 +490,7 @@ bool keyboard_layout::layout_key(Bitu key, Bit8u flags1, Bit8u flags2, Bit8u fla
 				// check if command-bit is set for normal plane
 				bool is_command=(current_layout[key*layout_pages+layout_pages-2]&1)!=0;
 				if (this->map_key(key, current_layout[key*layout_pages],
-				                  is_command, is_special_pair)) return true;
+					is_command, is_special_pair)) return true;
 			}
 		}
 	}
@@ -512,42 +506,42 @@ bool keyboard_layout::layout_key(Bitu key, Bit8u flags1, Bit8u flags2, Bit8u fla
 		Bit16u req_userflags=current_layout_planes[cplane].required_userflags;
 		// test flags
 		if (((current_flags & req_flags)==req_flags) &&
-		        ((user_keys & req_userflags)==req_userflags) &&
-		        ((current_flags & current_layout_planes[cplane].forbidden_flags)==0) &&
-		        ((user_keys & current_layout_planes[cplane].forbidden_userflags)==0)) {
-			// remap key
-			if (current_layout[key*layout_pages+2+cplane]!=0) {
-				// check if command-bit is set for this plane
-				bool is_command=((current_layout[key*layout_pages+layout_pages-2]>>(cplane+2))&1)!=0;
-				if (this->map_key(key, current_layout[key*layout_pages+2+cplane],
-				                  is_command, is_special_pair)) return true;
-			} else break;	// abort plane checking
-		}
+			((user_keys & req_userflags)==req_userflags) &&
+			((current_flags & current_layout_planes[cplane].forbidden_flags)==0) &&
+			((user_keys & current_layout_planes[cplane].forbidden_userflags)==0)) {
+				// remap key
+				if (current_layout[key*layout_pages+2+cplane]!=0) {
+					// check if command-bit is set for this plane
+					bool is_command=((current_layout[key*layout_pages+layout_pages-2]>>(cplane+2))&1)!=0;
+					if (this->map_key(key, current_layout[key*layout_pages+2+cplane],
+						is_command, is_special_pair)) return true;
+				} else break;	// abort plane checking
+			}
 	}
 
 	if (diacritics_character>0) {
 		// ignore state-changing keys
 		switch(key) {
-		case 0x1d:			/* Ctrl Pressed */
-		case 0x2a:			/* Left Shift Pressed */
-		case 0x36:			/* Right Shift Pressed */
-		case 0x38:			/* Alt Pressed */
-		case 0x3a:			/* Caps Lock */
-		case 0x45:			/* Num Lock */
-		case 0x46:			/* Scroll Lock */
-			break;
-		default:
-			if (diacritics_character-200>=diacritics_entries) {
-				diacritics_character=0;
-				return true;
-			}
-			Bit16u diacritics_start=0;
-			// search start of subtable
-			for (Bit16u i=0; i<diacritics_character-200; i++)
-				diacritics_start+=diacritics[diacritics_start+1]*2+2;
+			case 0x1d:			/* Ctrl Pressed */
+			case 0x2a:			/* Left Shift Pressed */
+			case 0x36:			/* Right Shift Pressed */
+			case 0x38:			/* Alt Pressed */
+			case 0x3a:			/* Caps Lock */
+			case 0x45:			/* Num Lock */
+			case 0x46:			/* Scroll Lock */
+				break;
+			default:
+				if (diacritics_character-200>=diacritics_entries) {
+					diacritics_character=0;
+					return true;
+				}
+				Bit16u diacritics_start=0;
+				// search start of subtable
+				for (Bit16u i=0; i<diacritics_character-200; i++)
+					diacritics_start+=diacritics[diacritics_start+1]*2+2;
 
-			BIOS_AddKeyToBuffer((Bit16u)(key<<8) | diacritics[diacritics_start]);
-			diacritics_character=0;
+				BIOS_AddKeyToBuffer((Bit16u)(key<<8) | diacritics[diacritics_start]);
+				diacritics_character=0;
 		}
 	}
 
@@ -707,77 +701,29 @@ Bitu keyboard_layout::read_codepage_file(const char* codepage_file_name, Bit32s 
 	if (!strcmp(cp_filename,"auto")) {
 		// select matching .cpi-file for specified codepage
 		switch (codepage_id) {
-		case 437:
-		case 850:
-		case 852:
-		case 853:
-		case 857:
-		case 858:
-			sprintf(cp_filename, "EGA.CPI");
-			break;
-		case 775:
-		case 859:
-		case 1116:
-		case 1117:
-			sprintf(cp_filename, "EGA2.CPI");
-			break;
-		case 771:
-		case 772:
-		case 808:
-		case 855:
-		case 866:
-		case 872:
-			sprintf(cp_filename, "EGA3.CPI");
-			break;
-		case 848:
-		case 849:
-		case 1125:
-		case 1131:
-		case 61282:
-			sprintf(cp_filename, "EGA4.CPI");
-			break;
-		case 737:
-		case 851:
-		case 869:
-			sprintf(cp_filename, "EGA5.CPI");
-			break;
-		case 113:
-		case 899:
-		case 59829:
-		case 60853:
-			sprintf(cp_filename, "EGA6.CPI");
-			break;
-		case 58152:
-		case 58210:
-		case 59234:
-		case 60258:
-		case 62306:
-			sprintf(cp_filename, "EGA7.CPI");
-			break;
-		case 770:
-		case 773:
-		case 774:
-		case 777:
-		case 778:
-			sprintf(cp_filename, "EGA8.CPI");
-			break;
-		case 860:
-		case 861:
-		case 863:
-		case 865:
-			sprintf(cp_filename, "EGA9.CPI");
-			break;
-		case 667:
-		case 668:
-		case 790:
-		case 867:
-		case 991:
-		case 57781:
-			sprintf(cp_filename, "EGA10.CPI");
-			break;
-		default:
-			//LOG_MSG("No matching cpi file for codepage %i",codepage_id);
-			return KEYB_INVALIDCPFILE;
+			case 437:	case 850:	case 852:	case 853:	case 857:	case 858:	
+						sprintf(cp_filename, "EGA.CPI"); break;
+			case 775:	case 859:	case 1116:	case 1117:
+						sprintf(cp_filename, "EGA2.CPI"); break;
+			case 771:	case 772:	case 808:	case 855:	case 866:	case 872:
+						sprintf(cp_filename, "EGA3.CPI"); break;
+			case 848:	case 849:	case 1125:	case 1131:	case 61282:
+						sprintf(cp_filename, "EGA4.CPI"); break;
+			case 737:	case 851:	case 869:
+						sprintf(cp_filename, "EGA5.CPI"); break;
+			case 113:	case 899:	case 59829:	case 60853:
+						sprintf(cp_filename, "EGA6.CPI"); break;
+			case 58152:	case 58210:	case 59234:	case 60258:	case 62306:
+						sprintf(cp_filename, "EGA7.CPI"); break;
+			case 770:	case 773:	case 774:	case 777:	case 778:
+						sprintf(cp_filename, "EGA8.CPI"); break;
+			case 860:	case 861:	case 863:	case 865:
+						sprintf(cp_filename, "EGA9.CPI"); break;
+			case 667:	case 668:	case 790:	case 867:	case 991:	case 57781:
+						sprintf(cp_filename, "EGA10.CPI"); break;
+			default:
+				LOG_MSG("No matching cpi file for codepage %i",codepage_id);
+				return KEYB_INVALIDCPFILE;
 		}
 	}
 
@@ -808,14 +754,79 @@ Bitu keyboard_layout::read_codepage_file(const char* codepage_file_name, Bit32s 
 	bool upxfound=false;
 	Bit16u found_at_pos=5;
 	if (tempfile==NULL) {
-		if (codepage_id == 437) {
-			for (Bitu bct=0; bct<6322; bct++) cpi_buf[bct]=font_ega_cpx[bct];
-			cpi_buf_size=6322;
-			upxfound=true;
-			found_at_pos=0x29;
-			size_of_cpxdata=cpi_buf_size;
-		} else {
+		// check if build-in codepage is available
+		switch (codepage_id) {
+			case 437:	case 850:	case 852:	case 853:	case 857:	case 858:	
+						for (Bitu bct=0; bct<6322; bct++) cpi_buf[bct]=font_ega_cpx[bct];
+						cpi_buf_size=6322;
+						break;
+			case 771:	case 772:	case 808:	case 855:	case 866:	case 872:
+						for (Bitu bct=0; bct<5455; bct++) cpi_buf[bct]=font_ega3_cpx[bct];
+						cpi_buf_size=5455;
+						break;
+			case 737:	case 851:	case 869:
+						for (Bitu bct=0; bct<5720; bct++) cpi_buf[bct]=font_ega5_cpx[bct];
+						cpi_buf_size=5720;
+						break;
+			default: 
+				return KEYB_INVALIDCPFILE;
+				break;
+		}
+		upxfound=true;
+		found_at_pos=0x29;
+		size_of_cpxdata=cpi_buf_size;
+	} else {
+		Bit32u dr=(Bit32u)fread(cpi_buf, sizeof(Bit8u), 5, tempfile);
+		// check if file is valid
+		if (dr<5) {
+			LOG(LOG_BIOS,LOG_ERROR)("Codepage file %s invalid",cp_filename);
 			return KEYB_INVALIDCPFILE;
+		}
+		// check if non-compressed cpi file
+		if ((cpi_buf[0]!=0xff) || (cpi_buf[1]!=0x46) || (cpi_buf[2]!=0x4f) || 
+			(cpi_buf[3]!=0x4e) || (cpi_buf[4]!=0x54)) {
+			// check if dr-dos custom cpi file
+			if ((cpi_buf[0]==0x7f) && (cpi_buf[1]!=0x44) && (cpi_buf[2]!=0x52) && 
+				(cpi_buf[3]!=0x46) && (cpi_buf[4]!=0x5f)) {
+				LOG(LOG_BIOS,LOG_ERROR)("Codepage file %s has unsupported DR-DOS format",cp_filename);
+				return KEYB_INVALIDCPFILE;
+			}
+			// check if compressed cpi file
+			Bit8u next_byte=0;
+			for (Bitu i=0; i<100; i++) {
+				fread(&next_byte, sizeof(Bit8u), 1, tempfile);	found_at_pos++;
+				while (next_byte==0x55) {
+					fread(&next_byte, sizeof(Bit8u), 1, tempfile);	found_at_pos++;
+					if (next_byte==0x50) {
+						fread(&next_byte, sizeof(Bit8u), 1, tempfile);	found_at_pos++;
+						if (next_byte==0x58) {
+							fread(&next_byte, sizeof(Bit8u), 1, tempfile);	found_at_pos++;
+							if (next_byte==0x21) {
+								// read version ID
+								fread(&next_byte, sizeof(Bit8u), 1, tempfile);
+								found_at_pos++;
+								upxfound=true;
+								break;
+							}
+						}
+					}
+				}
+				if (upxfound) break;
+			}
+			if (!upxfound) {
+				LOG(LOG_BIOS,LOG_ERROR)("Codepage file %s invalid: %x",cp_filename,cpi_buf[0]);
+				return KEYB_INVALIDCPFILE;
+			} else {
+				if (next_byte<10) E_Exit("UPX-compressed cpi file, but upx-version too old");
+
+				// read in compressed CPX-file
+				fseek(tempfile, 0, SEEK_SET);
+				size_of_cpxdata=(Bitu)fread(cpi_buf, sizeof(Bit8u), 65536, tempfile);
+			}
+		} else {
+			// standard uncompressed cpi-file
+			fseek(tempfile, 0, SEEK_SET);
+			cpi_buf_size=(Bit32u)fread(cpi_buf, sizeof(Bit8u), 65536, tempfile);
 		}
 	}
 
@@ -891,29 +902,25 @@ Bitu keyboard_layout::read_codepage_file(const char* codepage_file_name, Bit32s 
 				if (font_height==0x10) {
 					// 16x8 font
 					PhysPt font16pt=Real2Phys(int10.rom.font_16);
-					for (Bitu i=0; i<256*16; i++) {
+					for (Bitu i=0;i<256*16;i++) {
 						phys_writeb(font16pt+i,cpi_buf[font_data_start+i]);
 					}
-					// terminate alternate list to prevent loading
-					phys_writeb(Real2Phys(int10.rom.font_16_alternate),0);
 					font_changed=true;
 				} else if (font_height==0x0e) {
 					// 14x8 font
 					PhysPt font14pt=Real2Phys(int10.rom.font_14);
-					for (Bitu i=0; i<256*14; i++) {
+					for (Bitu i=0;i<256*14;i++) {
 						phys_writeb(font14pt+i,cpi_buf[font_data_start+i]);
 					}
-					// terminate alternate list to prevent loading
-					phys_writeb(Real2Phys(int10.rom.font_14_alternate),0);
 					font_changed=true;
 				} else if (font_height==0x08) {
 					// 8x8 fonts
 					PhysPt font8pt=Real2Phys(int10.rom.font_8_first);
-					for (Bitu i=0; i<128*8; i++) {
+					for (Bitu i=0;i<128*8;i++) {
 						phys_writeb(font8pt+i,cpi_buf[font_data_start+i]);
 					}
 					font8pt=Real2Phys(int10.rom.font_8_second);
-					for (Bitu i=0; i<128*8; i++) {
+					for (Bitu i=0;i<128*8;i++) {
 						phys_writeb(font8pt+i,cpi_buf[font_data_start+i+128*8]);
 					}
 					font_changed=true;
@@ -1077,7 +1084,7 @@ const char* DOS_GetLoadedLayout(void) {
 
 class DOS_KeyboardLayout: public Module_base {
 public:
-	DOS_KeyboardLayout(Section* configuration):Module_base(configuration) {
+	DOS_KeyboardLayout(Section* configuration):Module_base(configuration){
 		Section_prop * section=static_cast<Section_prop *>(configuration);
 		dos.loaded_codepage=437;	// US codepage already initialized
 		loaded_layout=new keyboard_layout();
@@ -1108,126 +1115,126 @@ public:
 			// try to match emulated keyboard layout with host-keyboardlayout
 			// codepage 437 (standard) is preferred
 			switch (cur_kb_layout) {
-			/*				case 1026:
-								layoutname = "bg241";
-								break; */
-			case 1029:
-				layoutname = "cz243";
-				break;
-			case 1030:
-				layoutname = "dk";
-				break;
-			case 1031:
-				layoutname = "gr";
-				wants_dos_codepage = 437;
-				break;
-			case 1033:
-				// US
-				return;
-			case 1032:
-				layoutname = "gk";
-				break;
-			case 1034:
-				layoutname = "sp";
-				wants_dos_codepage = 437;
-				break;
-			case 1035:
-				layoutname = "su";
-				wants_dos_codepage = 437;
-				break;
-			case 1036:
-				layoutname = "fr";
-				wants_dos_codepage = 437;
-				break;
-			case 1038:
-				if (cur_kb_subID==1) layoutname = "hu";
-				else layoutname = "hu208";
-				break;
-			case 1039:
-				layoutname = "is161";
-				break;
-			case 1040:
-				layoutname = "it";
-				wants_dos_codepage = 437;
-				break;
-			case 1043:
-				layoutname = "nl";
-				wants_dos_codepage = 437;
-				break;
-			case 1044:
-				layoutname = "no";
-				break;
-			case 1045:
-				layoutname = "pl";
-				break;
-			case 1046:
-				layoutname = "br";
-				wants_dos_codepage = 437;
-				break;
-			/*				case 1048:
-								layoutname = "ro446";
-								break; */
-			case 1049:
-				layoutname = "ru";
-				wants_dos_codepage = 437;
-				break;
-			case 1050:
-				layoutname = "hr";
-				break;
-			case 1051:
-				layoutname = "sk";
-				break;
-			/*				case 1052:
-								layoutname = "sq448";
-								break; */
-			case 1053:
-				layoutname = "sv";
-				wants_dos_codepage = 437;
-				break;
-			case 1055:
-				layoutname = "tr";
-				break;
-			case 1058:
-				layoutname = "ur";
-				wants_dos_codepage = 437;
-				break;
-			case 1059:
-				layoutname = "bl";
-				break;
-			case 1060:
-				layoutname = "si";
-				break;
-			case 1061:
-				layoutname = "et";
-				break;
-			/*				case 1062:
-								layoutname = "lv";
-								break; */
-			/*				case 1063:
-								layoutname = "lt221";
-								break; */
-			/*				case 1064:
-								layoutname = "tj";
-								break;
-							case 1066:
-								layoutname = "vi";
-								break;
-							case 1067:
-								layoutname = "hy";
-								break; */
-			case 2055:
-				layoutname = "sg";
-				wants_dos_codepage = 437;
-				break;
-			case 2070:
-				layoutname = "po";
-				break;
-			case 4108:
-				layoutname = "sf";
-				wants_dos_codepage = 437;
-				break;
-			default:
-				break;
+/*				case 1026:
+					layoutname = "bg241";
+					break; */
+				case 1029:
+					layoutname = "cz243";
+					break;
+				case 1030:
+					layoutname = "dk";
+					break;
+				case 1031:
+					layoutname = "gr";
+					wants_dos_codepage = 437;
+					break;
+				case 1033:
+					// US
+					return;
+				case 1032:
+					layoutname = "gk";
+					break;
+				case 1034:
+					layoutname = "sp";
+					wants_dos_codepage = 437;
+					break;
+				case 1035:
+					layoutname = "su";
+					wants_dos_codepage = 437;
+					break;
+				case 1036:
+					layoutname = "fr";
+					wants_dos_codepage = 437;
+					break;
+				case 1038:
+					if (cur_kb_subID==1) layoutname = "hu";
+					else layoutname = "hu208";
+					break;
+				case 1039:
+					layoutname = "is161";
+					break;
+				case 1040:
+					layoutname = "it";
+					wants_dos_codepage = 437;
+					break;
+				case 1043:
+					layoutname = "nl";
+					wants_dos_codepage = 437;
+					break;
+				case 1044:
+					layoutname = "no";
+					break;
+				case 1045:
+					layoutname = "pl";
+					break;
+				case 1046:
+					layoutname = "br";
+					wants_dos_codepage = 437;
+					break;
+/*				case 1048:
+					layoutname = "ro446";
+					break; */
+				case 1049:
+					layoutname = "ru";
+					wants_dos_codepage = 437;
+					break;
+				case 1050:
+					layoutname = "hr";
+					break;
+				case 1051:
+					layoutname = "sk";
+					break;
+/*				case 1052:
+					layoutname = "sq448";
+					break; */
+				case 1053:
+					layoutname = "sv";
+					wants_dos_codepage = 437;
+					break;
+				case 1055:
+					layoutname = "tr";
+					break;
+				case 1058:
+					layoutname = "ur";
+					wants_dos_codepage = 437;
+					break;
+				case 1059:
+					layoutname = "bl";
+					break;
+				case 1060:
+					layoutname = "si";
+					break;
+				case 1061:
+					layoutname = "et";
+					break;
+/*				case 1062:
+					layoutname = "lv";
+					break; */
+/*				case 1063:
+					layoutname = "lt221";
+					break; */
+/*				case 1064:
+					layoutname = "tj";
+					break;
+				case 1066:
+					layoutname = "vi";
+					break;
+				case 1067:
+					layoutname = "hy";
+					break; */
+				case 2055:
+					layoutname = "sg";
+					wants_dos_codepage = 437;
+					break;
+				case 2070:
+					layoutname = "po";
+					break;
+				case 4108:
+					layoutname = "sf";
+					wants_dos_codepage = 437;
+					break;
+				default:
+					break;
 			}
 #endif
 		}
@@ -1245,22 +1252,22 @@ public:
 			loaded_layout->read_codepage_file("auto", req_codepage);
 		}
 
-		/*		if (strncmp(layoutname,"auto",4) && strncmp(layoutname,"none",4)) {
-					LOG_MSG("Loading DOS keyboard layout %s ...",layoutname);
-				} */
+/*		if (strncmp(layoutname,"auto",4) && strncmp(layoutname,"none",4)) {
+			LOG_MSG("Loading DOS keyboard layout %s ...",layoutname);
+		} */
 		if (loaded_layout->read_keyboard_file(layoutname, dos.loaded_codepage)) {
 			if (strncmp(layoutname,"auto",4)) {
-				//	LOG_MSG("Error loading keyboard layout %s",layoutname);
+				LOG_MSG("Error loading keyboard layout %s",layoutname);
 			}
 		} else {
 			const char* lcode = loaded_layout->main_language_code();
 			if (lcode) {
-				//	LOG_MSG("DOS keyboard layout loaded with main language code %s for layout %s",lcode,layoutname);
+				LOG_MSG("DOS keyboard layout loaded with main language code %s for layout %s",lcode,layoutname);
 			}
 		}
 	}
 
-	~DOS_KeyboardLayout() {
+	~DOS_KeyboardLayout(){
 		if ((dos.loaded_codepage!=437) && (CurMode->type==M_TEXT)) {
 			INT10_ReloadRomFonts();
 			dos.loaded_codepage=437;	// US codepage
@@ -1275,11 +1282,11 @@ public:
 static DOS_KeyboardLayout* test;
 
 void DOS_KeyboardLayout_ShutDown(Section* /*sec*/) {
-	delete test;
+	delete test;	
 }
 
 void DOS_KeyboardLayout_Init(Section* sec) {
 	test = new DOS_KeyboardLayout(sec);
 	sec->AddDestroyFunction(&DOS_KeyboardLayout_ShutDown,true);
-	//	MAPPER_AddHandler(switch_keyboard_layout,MK_f2,MMOD1|MMOD2,"sw_layout","Switch Layout");
+//	MAPPER_AddHandler(switch_keyboard_layout,MK_f2,MMOD1|MMOD2,"sw_layout","Switch Layout");
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,11 +11,12 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+/* $Id: cdrom_ioctl_win32.cpp,v 1.16 2009-01-07 22:39:18 c2woody Exp $ */
 
 #if defined (WIN32)
 
@@ -29,7 +30,7 @@
 #if (defined (_MSC_VER)) || (defined __MINGW64_VERSION_MAJOR)
 #include <winioctl.h>			// Ioctl stuff
 #include <ntddcdrm.h>			// Ioctl stuff
-#else
+#else 
 #include "ddk/ntddcdrm.h"		// Ioctl stuff
 #endif
 
@@ -46,7 +47,7 @@ bool CDROM_Interface_Ioctl::mci_CDioctl(UINT msg, DWORD flags, void *arg) {
 	if (mci_error!=MMSYSERR_NOERROR) {
 		char error[256];
 		mciGetErrorString(mci_error, error, 256);
-		//LOG_MSG("mciSendCommand() error: %s", error);
+		LOG_MSG("mciSendCommand() error: %s", error);
 		return true;
 	}
 	return false;
@@ -121,22 +122,22 @@ int CDROM_Interface_Ioctl::mci_CDStatus(void) {
 		status = -1;
 	} else {
 		switch (mci_status.dwReturn) {
-		case MCI_MODE_NOT_READY:
-		case MCI_MODE_OPEN:
-			status = 0;
-			break;
-		case MCI_MODE_STOP:
-			status = 1;
-			break;
-		case MCI_MODE_PLAY:
-			status = 2;
-			break;
-		case MCI_MODE_PAUSE:
-			status = 3;
-			break;
-		default:
-			status = -1;
-			break;
+			case MCI_MODE_NOT_READY:
+			case MCI_MODE_OPEN:
+				status = 0;
+				break;
+			case MCI_MODE_STOP:
+				status = 1;
+				break;
+			case MCI_MODE_PLAY:
+				status = 2;
+				break;
+			case MCI_MODE_PAUSE:
+				status = 3;
+				break;
+			default:
+				status = -1;
+				break;
 		}
 	}
 
@@ -152,30 +153,29 @@ bool CDROM_Interface_Ioctl::mci_CDPosition(int *position) {
 	mci_status.dwItem = MCI_STATUS_MODE;
 	if (mci_CDioctl(MCI_STATUS, flags, &mci_status)) return true;
 	switch (mci_status.dwReturn) {
-	case MCI_MODE_NOT_READY:
-	case MCI_MODE_OPEN:
-	case MCI_MODE_STOP:
-		return true;	// not ready/undefined status
-	case MCI_MODE_PLAY:
-	case MCI_MODE_PAUSE:
-		mci_status.dwItem = MCI_STATUS_POSITION;
-		if (!mci_CDioctl(MCI_STATUS, flags, &mci_status)) {
-			*position = MSF_TO_FRAMES(
-			                MCI_MSF_MINUTE(mci_status.dwReturn),
-			                MCI_MSF_SECOND(mci_status.dwReturn),
-			                MCI_MSF_FRAME(mci_status.dwReturn));
-		}
-		return false;	// no error, position read
-	default:
-		break;
+		case MCI_MODE_NOT_READY:
+		case MCI_MODE_OPEN:
+		case MCI_MODE_STOP:
+			return true;	// not ready/undefined status
+		case MCI_MODE_PLAY:
+		case MCI_MODE_PAUSE:
+			mci_status.dwItem = MCI_STATUS_POSITION;
+			if (!mci_CDioctl(MCI_STATUS, flags, &mci_status)) {
+				*position = MSF_TO_FRAMES(
+					MCI_MSF_MINUTE(mci_status.dwReturn),
+					MCI_MSF_SECOND(mci_status.dwReturn),
+					MCI_MSF_FRAME(mci_status.dwReturn));
+			}
+			return false;	// no error, position read
+		default:
+			break;
 	}
 	return false;
 }
 
 
 CDROM_Interface_Ioctl::dxPlayer CDROM_Interface_Ioctl::player = {
-	NULL, NULL, NULL, {0}, 0, 0, 0, false, false, false, { {0,0,0,0},{0,0,0,0} }
-};
+	NULL, NULL, NULL, 0, 0,	0, 0, 0, false,	false };
 
 CDROM_Interface_Ioctl::CDROM_Interface_Ioctl(cdioctl_cdatype ioctl_cda) {
 	pathname[0] = 0;
@@ -199,8 +199,8 @@ bool CDROM_Interface_Ioctl::GetUPC(unsigned char& attr, char* upc) {
 bool CDROM_Interface_Ioctl::GetAudioTracks(int& stTrack, int& endTrack, TMSF& leadOut) {
 	CDROM_TOC toc;
 	DWORD	byteCount;
-	BOOL	bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_READ_TOC, NULL, 0,
-	                                &toc, sizeof(toc), &byteCount,NULL);
+	BOOL	bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_READ_TOC, NULL, 0, 
+									&toc, sizeof(toc), &byteCount,NULL);
 	if (!bStat) return false;
 
 	stTrack		= toc.FirstTrack;
@@ -230,24 +230,24 @@ bool CDROM_Interface_Ioctl::GetAudioTracks(int& stTrack, int& endTrack, TMSF& le
 bool CDROM_Interface_Ioctl::GetAudioTrackInfo(int track, TMSF& start, unsigned char& attr) {
 	CDROM_TOC toc;
 	DWORD	byteCount;
-	BOOL	bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_READ_TOC, NULL, 0,
-	                                &toc, sizeof(toc), &byteCount,NULL);
+	BOOL	bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_READ_TOC, NULL, 0, 
+									&toc, sizeof(toc), &byteCount,NULL);
 	if (!bStat) return false;
-
+	
 	attr		= (toc.TrackData[track-1].Control << 4) & 0xEF;
 	start.min	= toc.TrackData[track-1].Address[1];
 	start.sec	= toc.TrackData[track-1].Address[2];
 	start.fr	= toc.TrackData[track-1].Address[3];
 	return true;
-}
+}	
 
 bool CDROM_Interface_Ioctl::GetAudioTracksAll(void) {
 	if (track_start_valid) return true;
 
 	CDROM_TOC toc;
 	DWORD	byteCount;
-	BOOL	bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_READ_TOC, NULL, 0,
-	                                &toc, sizeof(toc), &byteCount,NULL);
+	BOOL	bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_READ_TOC, NULL, 0, 
+									&toc, sizeof(toc), &byteCount,NULL);
 	if (!bStat) return false;
 
 	Bits track_num = 0;
@@ -292,8 +292,8 @@ bool CDROM_Interface_Ioctl::GetAudioSub(unsigned char& attr, unsigned char& trac
 
 	insub.Format = IOCTL_CDROM_CURRENT_POSITION;
 
-	BOOL	bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_READ_Q_CHANNEL, &insub, sizeof(insub),
-	                                &sub, sizeof(sub), &byteCount,NULL);
+	BOOL	bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_READ_Q_CHANNEL, &insub, sizeof(insub), 
+									&sub, sizeof(sub), &byteCount,NULL);
 	if (!bStat) return false;
 
 	attr		= (sub.CurrentPosition.Control << 4) & 0xEF;
@@ -346,8 +346,8 @@ bool CDROM_Interface_Ioctl::GetAudioStatus(bool& playing, bool& pause) {
 
 	insub.Format = IOCTL_CDROM_CURRENT_POSITION;
 
-	BOOL	bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_READ_Q_CHANNEL, &insub, sizeof(insub),
-	                                &sub, sizeof(sub), &byteCount,NULL);
+	BOOL	bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_READ_Q_CHANNEL, &insub, sizeof(insub), 
+									&sub, sizeof(sub), &byteCount,NULL);
 	if (!bStat) return false;
 
 	playing = (sub.CurrentPosition.Header.AudioStatus == AUDIO_STATUS_IN_PROGRESS);
@@ -406,19 +406,17 @@ bool CDROM_Interface_Ioctl::PlayAudioSector	(unsigned long start,unsigned long l
 	DWORD	byteCount;
 	// Start
 	unsigned long addr	= start + 150;
-	audio.StartingF = (UCHAR)(addr%75);
-	addr/=75;
-	audio.StartingS = (UCHAR)(addr%60);
+	audio.StartingF = (UCHAR)(addr%75); addr/=75;
+	audio.StartingS = (UCHAR)(addr%60); 
 	audio.StartingM = (UCHAR)(addr/60);
 	// End
 	addr			= start + len + 150;
-	audio.EndingF	= (UCHAR)(addr%75);
-	addr/=75;
-	audio.EndingS	= (UCHAR)(addr%60);
+	audio.EndingF	= (UCHAR)(addr%75); addr/=75;
+	audio.EndingS	= (UCHAR)(addr%60); 
 	audio.EndingM	= (UCHAR)(addr/60);
 
-	BOOL	bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_PLAY_AUDIO_MSF, &audio, sizeof(audio),
-	                                NULL, 0, &byteCount,NULL);
+	BOOL	bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_PLAY_AUDIO_MSF, &audio, sizeof(audio), 
+									NULL, 0, &byteCount,NULL);
 	return bStat>0;
 }
 
@@ -432,21 +430,22 @@ bool CDROM_Interface_Ioctl::PauseAudio(bool resume) {
 		return false;
 	}
 	if (use_dxplay) {
+		if (!player.isPlaying) return false;
 		player.isPaused = !resume;
 		return true;
 	}
 
-	BOOL bStat;
+	BOOL bStat; 
 	DWORD byteCount;
-	if (resume) bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_RESUME_AUDIO, NULL, 0,
-		                                    NULL, 0, &byteCount,NULL);
-	else		bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_PAUSE_AUDIO, NULL, 0,
-		                                    NULL, 0, &byteCount,NULL);
+	if (resume) bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_RESUME_AUDIO, NULL, 0, 
+										NULL, 0, &byteCount,NULL);	
+	else		bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_PAUSE_AUDIO, NULL, 0, 
+										NULL, 0, &byteCount,NULL);
 	return bStat>0;
 }
 
 bool CDROM_Interface_Ioctl::StopAudio(void) {
-	if (use_mciplay) {
+ 	if (use_mciplay) {
 		if (!mci_CDStop()) return true;
 		return false;
 	}
@@ -456,26 +455,20 @@ bool CDROM_Interface_Ioctl::StopAudio(void) {
 		return true;
 	}
 
-	BOOL bStat;
+	BOOL bStat; 
 	DWORD byteCount;
-	bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_STOP_AUDIO, NULL, 0,
-	                        NULL, 0, &byteCount,NULL);
+	bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_STOP_AUDIO, NULL, 0, 
+							NULL, 0, &byteCount,NULL);	
 	return bStat>0;
 }
 
-void CDROM_Interface_Ioctl::ChannelControl(TCtrl ctrl)
-{
-	player.ctrlUsed = (ctrl.out[0]!=0 || ctrl.out[1]!=1 || ctrl.vol[0]<0xfe || ctrl.vol[1]<0xfe);
-	player.ctrlData = ctrl;
-}
-
 bool CDROM_Interface_Ioctl::LoadUnloadMedia(bool unload) {
-	BOOL bStat;
+	BOOL bStat; 
 	DWORD byteCount;
-	if (unload) bStat = DeviceIoControl(hIOCTL,IOCTL_STORAGE_EJECT_MEDIA, NULL, 0,
-		                                    NULL, 0, &byteCount,NULL);
-	else		bStat = DeviceIoControl(hIOCTL,IOCTL_STORAGE_LOAD_MEDIA, NULL, 0,
-		                                    NULL, 0, &byteCount,NULL);
+	if (unload) bStat = DeviceIoControl(hIOCTL,IOCTL_STORAGE_EJECT_MEDIA, NULL, 0, 
+										NULL, 0, &byteCount,NULL);	
+	else		bStat = DeviceIoControl(hIOCTL,IOCTL_STORAGE_LOAD_MEDIA, NULL, 0, 
+										NULL, 0, &byteCount,NULL);	
 	track_start_valid = false;
 	return bStat>0;
 }
@@ -498,9 +491,9 @@ bool CDROM_Interface_Ioctl::ReadSector(Bit8u *buffer, bool raw, unsigned long se
 		in.DiskOffset.LowPart	= sector*COOKED_SECTOR_SIZE;
 		in.DiskOffset.HighPart	= 0;
 		in.SectorCount			= 1;
-		in.TrackMode			= CDDA;
-		bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_RAW_READ, &in, sizeof(in),
-		                        buffer, buflen, &byteCount,NULL);
+		in.TrackMode			= CDDA;		
+		bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_RAW_READ, &in, sizeof(in), 
+								buffer, buflen, &byteCount,NULL);
 	}
 
 	return (byteCount==buflen) && (bStat>0);
@@ -525,9 +518,9 @@ bool CDROM_Interface_Ioctl::ReadSectors(PhysPt buffer, bool raw, unsigned long s
 		in.DiskOffset.LowPart	= sector*COOKED_SECTOR_SIZE;
 		in.DiskOffset.HighPart	= 0;
 		in.SectorCount			= num;
-		in.TrackMode			= CDDA;
-		bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_RAW_READ, &in, sizeof(in),
-		                        bufdata, buflen, &byteCount,NULL);
+		in.TrackMode			= CDDA;		
+		bStat = DeviceIoControl(hIOCTL,IOCTL_CDROM_RAW_READ, &in, sizeof(in), 
+								bufdata, buflen, &byteCount,NULL);
 	}
 
 	MEM_BlockWrite(buffer,bufdata,buflen);
@@ -549,7 +542,7 @@ void CDROM_Interface_Ioctl::dx_CDAudioCallBack(Bitu len) {
 		if (player.targetFrame > player.currFrame)
 			success = player.cd->ReadSector(&player.buffer[player.bufLen], true, player.currFrame);
 		else success = false;
-
+		
 		if (success) {
 			player.currFrame++;
 			player.bufLen += RAW_SECTOR_SIZE;
@@ -560,16 +553,6 @@ void CDROM_Interface_Ioctl::dx_CDAudioCallBack(Bitu len) {
 		}
 	}
 	SDL_mutexV(player.mutex);
-	if (player.ctrlUsed) {
-		Bit16s sample0,sample1;
-		Bit16s * samples=(Bit16s *)&player.buffer;
-		for (Bitu pos=0; pos<len/4; pos++) {
-			sample0=samples[pos*2+player.ctrlData.out[0]];
-			sample1=samples[pos*2+player.ctrlData.out[1]];
-			samples[pos*2+0]=(Bit16s)(sample0*player.ctrlData.vol[0]/255.0);
-			samples[pos*2+1]=(Bit16s)(sample1*player.ctrlData.vol[1]/255.0);
-		}
-	}
 	player.channel->AddSamples_s16(len/4,(Bit16s *)player.buffer);
 	memmove(player.buffer, &player.buffer[len], player.bufLen - len);
 	player.bufLen -= len;
@@ -609,13 +592,13 @@ bool CDROM_Interface_Ioctl::SetDevice(char* path, int forceCD) {
 
 bool CDROM_Interface_Ioctl::Open(void) {
 	hIOCTL	= CreateFile(pathname,			// drive to open
-	                     GENERIC_READ,		// read access
-	                     FILE_SHARE_READ |	// share mode
-	                     FILE_SHARE_WRITE,
-	                     NULL,				// default security attributes
-	                     OPEN_EXISTING,		// disposition
-	                     0,					// file attributes
-	                     NULL);				// do not copy file attributes
+						GENERIC_READ,		// read access
+						FILE_SHARE_READ |	// share mode
+						FILE_SHARE_WRITE, 
+						NULL,				// default security attributes
+						OPEN_EXISTING,		// disposition
+						0,					// file attributes
+						NULL);				// do not copy file attributes
 	return (hIOCTL!=INVALID_HANDLE_VALUE);
 }
 

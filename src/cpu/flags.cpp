@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,9 +11,9 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 /*
@@ -43,9 +43,9 @@ Bit32u get_CF(void) {
 	case t_DECd:
 	case t_MUL:
 		return GETFLAG(CF);
-	case t_ADDb:
+	case t_ADDb:	
 		return (lf_resb<lf_var1b);
-	case t_ADDw:
+	case t_ADDw:	
 		return (lf_resw<lf_var1w);
 	case t_ADDd:
 		return (lf_resd<lf_var1d);
@@ -117,9 +117,9 @@ Bit32u get_CF(void) {
 	case t_TESTd:
 		return false;	/* Set to false */
 	case t_DIV:
-		return false;	/* Unknown */
+		return false;	/* Unkown */
 	default:
-		LOG(LOG_CPU,LOG_ERROR)("get_CF Unknown %" sBitfs(d),lflags.type);
+		LOG(LOG_CPU,LOG_ERROR)("get_CF Unknown %d",lflags.type);
 	}
 	return 0;
 }
@@ -133,7 +133,7 @@ Bit32u get_AF(void) {
 	switch (type) {
 	case t_UNKNOWN:
 		return GETFLAG(AF);
-	case t_ADDb:
+	case t_ADDb:	
 	case t_ADCb:
 	case t_SBBb:
 	case t_SUBb:
@@ -199,9 +199,9 @@ Bit32u get_AF(void) {
 	case t_DSHRd:
 	case t_DIV:
 	case t_MUL:
-		return false;			          /* Unknown */
+		return false;			          /* Unkown */
 	default:
-		LOG(LOG_CPU,LOG_ERROR)("get_AF Unknown %" sBitfs(d),lflags.type);
+		LOG(LOG_CPU,LOG_ERROR)("get_AF Unknown %d",lflags.type);
 	}
 	return 0;
 }
@@ -214,7 +214,7 @@ Bit32u get_ZF(void) {
 	switch (type) {
 	case t_UNKNOWN:
 		return GETFLAG(ZF);
-	case t_ADDb:
+	case t_ADDb:	
 	case t_ORb:
 	case t_ADCb:
 	case t_SBBb:
@@ -230,7 +230,7 @@ Bit32u get_ZF(void) {
 	case t_SARb:
 	case t_NEGb:
 		return (lf_resb==0);
-	case t_ADDw:
+	case t_ADDw:	
 	case t_ORw:
 	case t_ADCw:
 	case t_SBBw:
@@ -268,9 +268,9 @@ Bit32u get_ZF(void) {
 		return (lf_resd==0);
 	case t_DIV:
 	case t_MUL:
-		return false;		/* Unknown */
+		return false;		/* Unkown */
 	default:
-		LOG(LOG_CPU,LOG_ERROR)("get_ZF Unknown %" sBitfs(d),lflags.type);
+		LOG(LOG_CPU,LOG_ERROR)("get_ZF Unknown %d",lflags.type);
 	}
 	return false;
 }
@@ -336,9 +336,9 @@ Bit32u get_SF(void) {
 		return	(lf_resd&0x80000000);
 	case t_DIV:
 	case t_MUL:
-		return false;	/* Unknown */
+		return false;	/* Unkown */
 	default:
-		LOG(LOG_CPU,LOG_ERROR)("get_SF Unknown %" sBitfs(d),lflags.type);
+		LOG(LOG_CPU,LOG_ERROR)("get_SF Unkown %d",lflags.type);
 	}
 	return false;
 
@@ -424,31 +424,31 @@ Bit32u get_OF(void) {
 	case t_SARd:
 		return false;			/* Return false */
 	case t_DIV:
-		return false;		/* Unknown */
+		return false;		/* Unkown */
 	default:
-		LOG(LOG_CPU,LOG_ERROR)("get_OF Unkown %" sBitfs(d),lflags.type);
+		LOG(LOG_CPU,LOG_ERROR)("get_OF Unkown %d",lflags.type);
 	}
 	return false;
 }
 
 Bit16u parity_lookup[256] = {
-	FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
-	0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
-	0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
-	FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
-	0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
-	FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
-	FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
-	0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
-	0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
-	FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
-	FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
-	0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
-	FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
-	0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
-	0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
-	FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF
-};
+  FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
+  0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
+  0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
+  FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
+  0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
+  FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
+  FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
+  0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
+  0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
+  FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
+  FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
+  0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
+  FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
+  0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
+  0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0,
+  FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF
+  };
 
 Bit32u get_PF(void) {
 	switch (lflags.type) {
@@ -464,7 +464,7 @@ Bit32u get_PF(void) {
 #if 0
 
 Bitu FillFlags(void) {
-	//	if (lflags.type==t_UNKNOWN) return reg_flags;
+//	if (lflags.type==t_UNKNOWN) return reg_flags;
 	Bitu new_word=(reg_flags & ~FLAG_MASK);
 	if (get_CF()) new_word|=FLAG_CF;
 	if (get_PF()) new_word|=FLAG_PF;
@@ -499,7 +499,7 @@ Bitu FillFlags(void) {
 	switch (lflags.type) {
 	case t_UNKNOWN:
 		break;
-	case t_ADDb:
+	case t_ADDb:	
 		SET_FLAG(CF,(lf_resb<lf_var1b));
 		DOFLAG_AF;
 		DOFLAG_ZFb;
@@ -507,7 +507,7 @@ Bitu FillFlags(void) {
 		SET_FLAG(OF,((lf_var1b ^ lf_var2b ^ 0x80) & (lf_resb ^ lf_var1b)) & 0x80);
 		DOFLAG_PF;
 		break;
-	case t_ADDw:
+	case t_ADDw:	
 		SET_FLAG(CF,(lf_resw<lf_var1w));
 		DOFLAG_AF;
 		DOFLAG_ZFw;
@@ -573,7 +573,7 @@ Bitu FillFlags(void) {
 		SET_FLAG(OF,(lf_var1d ^ lf_var2d) & (lf_var1d ^ lf_resd) & 0x80000000);
 		DOFLAG_PF;
 		break;
-
+	
 
 	case t_SUBb:
 	case t_CMPb:
@@ -628,8 +628,8 @@ Bitu FillFlags(void) {
 		SET_FLAG(OF,false);
 		DOFLAG_PF;
 		break;
-
-
+	
+	
 	case t_TESTb:
 	case t_ANDb:
 		SET_FLAG(CF,false);
@@ -658,7 +658,7 @@ Bitu FillFlags(void) {
 		DOFLAG_PF;
 		break;
 
-
+	
 	case t_XORb:
 		SET_FLAG(CF,false);
 		SET_FLAG(AF,false);
@@ -757,7 +757,7 @@ Bitu FillFlags(void) {
 		SET_FLAG(AF,(lf_var2d&0x1f));
 		break;
 
-
+	
 	case t_DSHRw:	/* Hmm this is not correct for shift higher than 16 */
 		SET_FLAG(CF,(lf_var1d >> (lf_var2b - 1)) & 1);
 		DOFLAG_ZFw;
@@ -868,13 +868,13 @@ Bitu FillFlags(void) {
 		DOFLAG_PF;
 		break;
 
-
+	
 	case t_DIV:
 	case t_MUL:
 		break;
 
 	default:
-		LOG(LOG_CPU,LOG_ERROR)("Unhandled flag type %" sBitfs(d),lflags.type);
+		LOG(LOG_CPU,LOG_ERROR)("Unhandled flag type %d",lflags.type);
 		return 0;
 	}
 	lflags.type=t_UNKNOWN;
@@ -885,13 +885,13 @@ void FillFlagsNoCFOF(void) {
 	switch (lflags.type) {
 	case t_UNKNOWN:
 		return;
-	case t_ADDb:
+	case t_ADDb:	
 		DOFLAG_AF;
 		DOFLAG_ZFb;
 		DOFLAG_SFb;
 		DOFLAG_PF;
 		break;
-	case t_ADDw:
+	case t_ADDw:	
 		DOFLAG_AF;
 		DOFLAG_ZFw;
 		DOFLAG_SFw;
@@ -941,7 +941,7 @@ void FillFlagsNoCFOF(void) {
 		DOFLAG_SFd;
 		DOFLAG_PF;
 		break;
-
+	
 
 	case t_SUBb:
 	case t_CMPb:
@@ -984,8 +984,8 @@ void FillFlagsNoCFOF(void) {
 		DOFLAG_SFd;
 		DOFLAG_PF;
 		break;
-
-
+	
+	
 	case t_TESTb:
 	case t_ANDb:
 		SET_FLAG(AF,false);
@@ -1008,7 +1008,7 @@ void FillFlagsNoCFOF(void) {
 		DOFLAG_PF;
 		break;
 
-
+	
 	case t_XORb:
 		SET_FLAG(AF,false);
 		DOFLAG_ZFb;
@@ -1080,7 +1080,7 @@ void FillFlagsNoCFOF(void) {
 		SET_FLAG(AF,(lf_var2d&0x1f));
 		break;
 
-
+	
 	case t_DSHRw:	/* Hmm this is not correct for shift higher than 16 */
 		DOFLAG_ZFw;
 		DOFLAG_SFw;
@@ -1169,13 +1169,13 @@ void FillFlagsNoCFOF(void) {
 		DOFLAG_PF;
 		break;
 
-
+	
 	case t_DIV:
 	case t_MUL:
 		break;
 
 	default:
-		LOG(LOG_CPU,LOG_ERROR)("Unhandled flag type %" sBitfs(d),lflags.type);
+		LOG(LOG_CPU,LOG_ERROR)("Unhandled flag type %d",lflags.type);
 		break;
 	}
 	lflags.type=t_UNKNOWN;

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,11 +11,12 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+/* $Id: dos_misc.cpp,v 1.24 2009-09-25 20:51:21 qbix79 Exp $ */
 
 #include "dosbox.h"
 #include "callback.h"
@@ -35,7 +36,7 @@ void DOS_AddMultiplexHandler(MultiplexHandler * handler) {
 }
 
 void DOS_DelMultiplexHandler(MultiplexHandler * handler) {
-	for(Multiplex_it it =Multiplex.begin(); it != Multiplex.end(); it++) {
+	for(Multiplex_it it =Multiplex.begin();it != Multiplex.end();it++) {
 		if(*it == handler) {
 			Multiplex.erase(it);
 			return;
@@ -44,9 +45,9 @@ void DOS_DelMultiplexHandler(MultiplexHandler * handler) {
 }
 
 static Bitu INT2F_Handler(void) {
-	for(Multiplex_it it = Multiplex.begin(); it != Multiplex.end(); it++)
+	for(Multiplex_it it = Multiplex.begin();it != Multiplex.end();it++)
 		if( (*it)() ) return CBRET_NONE;
-
+   
 	LOG(LOG_DOSMISC,LOG_ERROR)("DOS:Multiplex Unhandled call %4X",reg_ax);
 	return CBRET_NONE;
 }
@@ -90,7 +91,7 @@ static bool DOS_MultiplexFunctions(void) {
 				mem_writew(sftptr+sftofs+0x02,(Bit16u)(Files[reg_bx]->flags&3));	// file open mode
 				mem_writeb(sftptr+sftofs+0x04,(Bit8u)(Files[reg_bx]->attr));		// file attribute
 				mem_writew(sftptr+sftofs+0x05,0x40|drive);							// device info word
-				mem_writed(sftptr+sftofs+0x07,RealMake(dos.tables.dpb,drive*9));	// dpb of the drive
+				mem_writed(sftptr+sftofs+0x07,RealMake(dos.tables.dpb,drive));		// dpb of the drive
 				mem_writew(sftptr+sftofs+0x0d,Files[reg_bx]->time);					// packed file time
 				mem_writew(sftptr+sftofs+0x0f,Files[reg_bx]->date);					// packed file date
 				Bit32u curpos=0;
@@ -124,7 +125,7 @@ static bool DOS_MultiplexFunctions(void) {
 					mem_writeb((PhysPt)(sftptr+sftofs+0x20+i),filename[i]);
 				for (i=nlen; i<8; i++)
 					mem_writeb((PhysPt)(sftptr+sftofs+0x20+i),' ');
-
+				
 				if (extlen>3) extlen=3;
 				for (i=0; i<extlen; i++)
 					mem_writeb((PhysPt)(sftptr+sftofs+0x28+i),dotpos[i]);
@@ -149,34 +150,34 @@ static bool DOS_MultiplexFunctions(void) {
 	case 0x1607:
 		if (reg_bx == 0x15) {
 			switch (reg_cx) {
-			case 0x0000:		// query instance
-				reg_cx = 0x0001;
-				reg_dx = 0x50;		// dos driver segment
-				SegSet16(es,0x50);	// patch table seg
-				reg_bx = 0x60;		// patch table ofs
-				return true;
-			case 0x0001:		// set patches
-				reg_ax = 0xb97c;
-				reg_bx = (reg_dx & 0x16);
-				reg_dx = 0xa2ab;
-				return true;
-			case 0x0003:		// get size of data struc
-				if (reg_dx==0x0001) {
-					// CDS size requested
+				case 0x0000:		// query instance
+					reg_cx = 0x0001;
+					reg_dx = 0x50;		// dos driver segment
+					SegSet16(es,0x50);	// patch table seg
+					reg_bx = 0x60;		// patch table ofs
+					return true;
+				case 0x0001:		// set patches
 					reg_ax = 0xb97c;
+					reg_bx = (reg_dx & 0x16);
 					reg_dx = 0xa2ab;
-					reg_cx = 0x000e;	// size
-				}
-				return true;
-			case 0x0004:		// instanced data
-				reg_dx = 0;		// none
-				return true;
-			case 0x0005:		// get device driver size
-				reg_ax = 0;
-				reg_dx = 0;
-				return true;
-			default:
-				return false;
+					return true;
+				case 0x0003:		// get size of data struc
+					if (reg_dx==0x0001) {
+						// CDS size requested
+						reg_ax = 0xb97c;
+						reg_dx = 0xa2ab;
+						reg_cx = 0x000e;	// size
+					}
+					return true;
+				case 0x0004:		// instanced data
+					reg_dx = 0;		// none
+					return true;
+				case 0x0005:		// get device driver size
+					reg_ax = 0;
+					reg_dx = 0;
+					return true;
+				default:
+					return false;
 			}
 		}
 		else if (reg_bx == 0x18) return true;	// idle callout
@@ -186,11 +187,11 @@ static bool DOS_MultiplexFunctions(void) {
 		return true; //So no warning in the debugger anymore
 	case 0x1689:	/*  Kernel IDLE CALL */
 	case 0x168f:	/*  Close awareness crap */
-		/* Removing warning */
+	   /* Removing warning */
 		return true;
 	case 0x4a01:	/* Query free hma space */
 	case 0x4a02:	/* ALLOCATE HMA SPACE */
-		LOG(LOG_DOSMISC,LOG_WARN)("INT 2f:4a HMA. DOSBox reports none available.");
+		LOG(LOG_DOSMISC,LOG_WARN)("INT 2f:4a HMA. Winbox reports none available.");
 		reg_bx=0;	//number of bytes available in HMA or amount successfully allocated
 		//ESDI=ffff:ffff Location of HMA/Allocated memory
 		SegSet16(es,0xffff);

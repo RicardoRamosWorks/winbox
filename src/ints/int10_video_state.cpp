@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,11 +11,12 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+/* $Id: int10_video_state.cpp,v 1.3 2009-05-27 09:15:42 qbix79 Exp $ */
 
 #include "dosbox.h"
 #include "mem.h"
@@ -177,9 +178,9 @@ bool INT10_VideoState_Save(Bitu state,RealPt buffer) {
 		Bit16u crt_reg=real_readw(BIOSMEM_SEG,BIOSMEM_CRTC_ADDRESS);
 
 		IO_WriteB(0x3c4,0x08);
-		//		Bitu seq_8=IO_ReadB(0x3c5);
+//		Bitu seq_8=IO_ReadB(0x3c5);
 		IO_ReadB(0x3c5);
-		//		real_writeb(base_seg,base_dest+0x00,IO_ReadB(0x3c5));
+//		real_writeb(base_seg,base_dest+0x00,IO_ReadB(0x3c5));
 		IO_WriteB(0x3c5,0x06);	// unlock s3-specific registers
 
 		// sequencer
@@ -332,9 +333,9 @@ bool INT10_VideoState_Restore(Bitu state,RealPt buffer) {
 
 		Bitu seq_idx=IO_ReadB(0x3c4);
 		IO_WriteB(0x3c4,0x08);
-		//		Bitu seq_8=IO_ReadB(0x3c5);
+//		Bitu seq_8=IO_ReadB(0x3c5);
 		IO_ReadB(0x3c5);
-		//		real_writeb(base_seg,base_dest+0x00,IO_ReadB(0x3c5));
+//		real_writeb(base_seg,base_dest+0x00,IO_ReadB(0x3c5));
 		IO_WriteB(0x3c5,0x06);	// unlock s3-specific registers
 
 		// sequencer
@@ -343,7 +344,7 @@ bool INT10_VideoState_Restore(Bitu state,RealPt buffer) {
 		}
 		IO_WriteB(0x3c4,seq_idx);
 
-		//		Bitu crtc_idx=IO_ReadB(0x3d4);
+//		Bitu crtc_idx=IO_ReadB(0x3d4);
 
 		// unlock s3-specific registers
 		IO_WriteW(crt_reg,0x4838);
@@ -363,20 +364,20 @@ bool INT10_VideoState_Restore(Bitu state,RealPt buffer) {
 		}
 
 		// mmio
-		/*		IO_WriteB(crt_reg,0x40);
-				Bitu sysval1=IO_ReadB(crt_reg+1);
-				IO_WriteB(crt_reg+1,sysval|1);
-				IO_WriteB(crt_reg,0x53);
-				Bitu sysva2=IO_ReadB(crt_reg+1);
-				IO_WriteB(crt_reg+1,sysval2|0x10);
+/*		IO_WriteB(crt_reg,0x40);
+		Bitu sysval1=IO_ReadB(crt_reg+1);
+		IO_WriteB(crt_reg+1,sysval|1);
+		IO_WriteB(crt_reg,0x53);
+		Bitu sysva2=IO_ReadB(crt_reg+1);
+		IO_WriteB(crt_reg+1,sysval2|0x10);
 
-				real_writew(0xa000,0x8128,0xffff);
+		real_writew(0xa000,0x8128,0xffff);
 
-				IO_WriteB(crt_reg,0x40);
-				IO_WriteB(crt_reg,sysval1);
-				IO_WriteB(crt_reg,0x53);
-				IO_WriteB(crt_reg,sysval2);
-				IO_WriteB(crt_reg,crtc_idx); */
+		IO_WriteB(crt_reg,0x40);
+		IO_WriteB(crt_reg,sysval1);
+		IO_WriteB(crt_reg,0x53);
+		IO_WriteB(crt_reg,sysval2);
+		IO_WriteB(crt_reg,crtc_idx); */
 	}
 
 	return true;

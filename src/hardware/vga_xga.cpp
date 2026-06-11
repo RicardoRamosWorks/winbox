@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,11 +11,12 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+/* $Id: vga_xga.cpp,v 1.17 2009-05-27 09:15:41 qbix79 Exp $ */
 
 #include <string.h>
 #include "dosbox.h"
@@ -104,7 +105,7 @@ void XGA_Write_Multifunc(Bitu val, Bitu len) {
 			xga.read_sel = dataval;
 			break;
 		default:
-			//LOG_MSG("XGA: Unhandled multifunction command %x", regselect);
+			LOG_MSG("XGA: Unhandled multifunction command %x", regselect);
 			break;
 	}
 }
@@ -236,7 +237,7 @@ Bitu XGA_GetMixResult(Bitu mixmode, Bitu srcval, Bitu dstdata) {
 			destval = ~(srcval | dstdata);
 			break;
 		default:
-			//LOG_MSG("XGA: GetMixResult: Unknown mix.  Shouldn't be able to get here!");
+			LOG_MSG("XGA: GetMixResult: Unknown mix.  Shouldn't be able to get here!");
 			break;
 	}
 	return destval;
@@ -311,11 +312,11 @@ void XGA_DrawLineVector(Bitu val) {
 						//LOG_MSG("XGA: DrawRect: Wants data from PIX_TRANS register");
 						break;
 					case 0x03: /* Src is bitmap data */
-						//LOG_MSG("XGA: DrawRect: Wants data from srcdata");
+						LOG_MSG("XGA: DrawRect: Wants data from srcdata");
 						//srcval = srcdata;
 						break;
 					default:
-					//	LOG_MSG("XGA: DrawRect: Shouldn't be able to get here!");
+						LOG_MSG("XGA: DrawRect: Shouldn't be able to get here!");
 						break;
 				}
 				dstdata = XGA_GetPoint(xat,yat);
@@ -325,7 +326,7 @@ void XGA_DrawLineVector(Bitu val) {
                 XGA_DrawPoint(xat,yat, destval);
 				break;
 			default: 
-			//	LOG_MSG("XGA: DrawLine: Needs mixmode %x", mixmode);
+				LOG_MSG("XGA: DrawLine: Needs mixmode %x", mixmode);
 				break;
 		}
 		xat += sx;
@@ -402,14 +403,14 @@ void XGA_DrawLineBresenham(Bitu val) {
 							break;
 						case 0x02: /* Src is pixel data from PIX_TRANS register */
 							//srcval = tmpval;
-				//			LOG_MSG("XGA: DrawRect: Wants data from PIX_TRANS register");
+							LOG_MSG("XGA: DrawRect: Wants data from PIX_TRANS register");
 							break;
 						case 0x03: /* Src is bitmap data */
-				//			LOG_MSG("XGA: DrawRect: Wants data from srcdata");
+							LOG_MSG("XGA: DrawRect: Wants data from srcdata");
 							//srcval = srcdata;
 							break;
 						default:
-				//			LOG_MSG("XGA: DrawRect: Shouldn't be able to get here!");
+							LOG_MSG("XGA: DrawRect: Shouldn't be able to get here!");
 							break;
 					}
 
@@ -429,7 +430,7 @@ void XGA_DrawLineBresenham(Bitu val) {
 
 					break;
 				default: 
-			//		LOG_MSG("XGA: DrawLine: Needs mixmode %x", mixmode);
+					LOG_MSG("XGA: DrawLine: Needs mixmode %x", mixmode);
 					break;
 			}
 			while (e > 0) {
@@ -484,14 +485,14 @@ void XGA_DrawRectangle(Bitu val) {
 							break;
 						case 0x02: /* Src is pixel data from PIX_TRANS register */
 							//srcval = tmpval;
-						//	LOG_MSG("XGA: DrawRect: Wants data from PIX_TRANS register");
+							LOG_MSG("XGA: DrawRect: Wants data from PIX_TRANS register");
 							break;
 						case 0x03: /* Src is bitmap data */
-						//	LOG_MSG("XGA: DrawRect: Wants data from srcdata");
+							LOG_MSG("XGA: DrawRect: Wants data from srcdata");
 							//srcval = srcdata;
 							break;
 						default:
-						//	LOG_MSG("XGA: DrawRect: Shouldn't be able to get here!");
+							LOG_MSG("XGA: DrawRect: Shouldn't be able to get here!");
 							break;
 					}
 					dstdata = XGA_GetPoint(srcx,srcy);
@@ -501,7 +502,7 @@ void XGA_DrawRectangle(Bitu val) {
                     XGA_DrawPoint(srcx,srcy, destval);
 					break;
 				default: 
-				//	LOG_MSG("XGA: DrawRect: Needs mixmode %x", mixmode);
+					LOG_MSG("XGA: DrawRect: Needs mixmode %x", mixmode);
 					break;
 			}
 			srcx += dx;
@@ -591,7 +592,7 @@ void XGA_DrawWait(Bitu val, Bitu len) {
 */
 					if(((mixmode >> 5) & 0x03) != 0x2) {
 						// those cases don't seem to occur
-					//	LOG_MSG("XGA: unsupported drawwait operation");
+						LOG_MSG("XGA: unsupported drawwait operation");
 						break;
 					}
 					switch(xga.waitcmd.buswidth) {
@@ -638,8 +639,8 @@ void XGA_DrawWait(Bitu val, Bitu len) {
 							break;
 						default:
 							// Let's hope they never show up ;)
-						//	LOG_MSG("XGA: unsupported bpp / datawidth combination %x",
-						//		xga.waitcmd.buswidth);
+							LOG_MSG("XGA: unsupported bpp / datawidth combination %x",
+								xga.waitcmd.buswidth);
 							break;
 					};
 					break;
@@ -686,8 +687,8 @@ void XGA_DrawWait(Bitu val, Bitu len) {
 									srcval = xga.forecolor;
 									break;
 								default:
-								//	LOG_MSG("XGA: DrawBlitWait: Unsupported src %x",
-								//		(mixmode >> 5) & 0x03);
+									LOG_MSG("XGA: DrawBlitWait: Unsupported src %x",
+										(mixmode >> 5) & 0x03);
 									srcval=0;
 									break;
 							}
@@ -706,12 +707,12 @@ void XGA_DrawWait(Bitu val, Bitu len) {
 					break;
 
 				default:
-				//	LOG_MSG("XGA: DrawBlitWait: Unhandled mixmode: %d", mixmode);
+					LOG_MSG("XGA: DrawBlitWait: Unhandled mixmode: %d", mixmode);
 					break;
 			} // switch mixmode
 			break;
 		default:
-			//LOG_MSG("XGA: Unhandled draw command %x", xga.waitcmd.cmd);
+			LOG_MSG("XGA: Unhandled draw command %x", xga.waitcmd.cmd);
 			break;
 	}
 }
@@ -744,13 +745,13 @@ void XGA_BlitRect(Bitu val) {
 			mixmode = xga.foremix;
 			break;
 		case 0x02: /* CPU Data determines mix used */
-			//LOG_MSG("XGA: DrawPattern: Mixselect data from PIX_TRANS register");
+			LOG_MSG("XGA: DrawPattern: Mixselect data from PIX_TRANS register");
 			break;
 		case 0x03: /* Video memory determines mix */
 			//LOG_MSG("XGA: Srcdata: %x, Forecolor %x, Backcolor %x, Foremix: %x Backmix: %x", srcdata, xga.forecolor, xga.backcolor, xga.foremix, xga.backmix);
 			break;
 		default:
-			//LOG_MSG("XGA: BlitRect: Unknown mix select register");
+			LOG_MSG("XGA: BlitRect: Unknown mix select register");
 			break;
 	}
 
@@ -785,13 +786,13 @@ void XGA_BlitRect(Bitu val) {
 					srcval = xga.forecolor;
 					break;
 				case 0x02: /* Src is pixel data from PIX_TRANS register */
-					//LOG_MSG("XGA: DrawPattern: Wants data from PIX_TRANS register");
+					LOG_MSG("XGA: DrawPattern: Wants data from PIX_TRANS register");
 					break;
 				case 0x03: /* Src is bitmap data */
 					srcval = srcdata;
 					break;
 				default:
-					//LOG_MSG("XGA: DrawPattern: Shouldn't be able to get here!");
+					LOG_MSG("XGA: DrawPattern: Shouldn't be able to get here!");
 					srcval = 0;
 					break;
 			}
@@ -836,13 +837,13 @@ void XGA_DrawPattern(Bitu val) {
 			mixmode = xga.foremix;
 			break;
 		case 0x02: /* CPU Data determines mix used */
-			//LOG_MSG("XGA: DrawPattern: Mixselect data from PIX_TRANS register");
+			LOG_MSG("XGA: DrawPattern: Mixselect data from PIX_TRANS register");
 			break;
 		case 0x03: /* Video memory determines mix */
 			//LOG_MSG("XGA: Pixctl: %x, Srcdata: %x, Forecolor %x, Backcolor %x, Foremix: %x Backmix: %x",xga.pix_cntl, srcdata, xga.forecolor, xga.backcolor, xga.foremix, xga.backmix);
 			break;
 		default:
-			//OG_MSG("XGA: DrawPattern: Unknown mix select register");
+			LOG_MSG("XGA: DrawPattern: Unknown mix select register");
 			break;
 	}
 
@@ -857,8 +858,10 @@ void XGA_DrawPattern(Bitu val) {
 
 			if(mixselect == 0x3) {
 				// TODO lots of guessing here but best results this way
-				if(srcdata) mixmode = xga.foremix;
-				else mixmode = xga.backmix;
+				/*if(srcdata == xga.forecolor)*/ mixmode = xga.foremix;
+				// else 
+				if(srcdata == xga.backcolor || srcdata == 0) 
+					mixmode = xga.backmix;
 			}
 
 			switch((mixmode >> 5) & 0x03) {
@@ -869,13 +872,13 @@ void XGA_DrawPattern(Bitu val) {
 					srcval = xga.forecolor;
 					break;
 				case 0x02: /* Src is pixel data from PIX_TRANS register */
-					//LOG_MSG("XGA: DrawPattern: Wants data from PIX_TRANS register");
+					LOG_MSG("XGA: DrawPattern: Wants data from PIX_TRANS register");
 					break;
 				case 0x03: /* Src is bitmap data */
 					srcval = srcdata;
 					break;
 				default:
-					//LOG_MSG("XGA: DrawPattern: Shouldn't be able to get here!");
+					LOG_MSG("XGA: DrawPattern: Shouldn't be able to get here!");
 					srcval = 0;
 					break;
 			}
@@ -902,24 +905,24 @@ void XGA_DrawCmd(Bitu val, Bitu len) {
 			if((val & 0x100) == 0) {
 				if((val & 0x8) == 0) {
 #if XGA_SHOW_COMMAND_TRACE == 1
-					//LOG_MSG("XGA: Drawing Bresenham line");
+					LOG_MSG("XGA: Drawing Bresenham line");
 #endif
                     XGA_DrawLineBresenham(val);
 				} else {
 #if XGA_SHOW_COMMAND_TRACE == 1
-					//LOG_MSG("XGA: Drawing vector line");
+					LOG_MSG("XGA: Drawing vector line");
 #endif
 					XGA_DrawLineVector(val);
 				}
 			} else {
-				//LOG_MSG("XGA: Wants line drawn from PIX_TRANS register!");
+				LOG_MSG("XGA: Wants line drawn from PIX_TRANS register!");
 			}
 			break;
 		case 2: /* Rectangle fill */
 			if((val & 0x100) == 0) {
 				xga.waitcmd.wait = false;
 #if XGA_SHOW_COMMAND_TRACE == 1
-				//LOG_MSG("XGA: Draw immediate rect: xy(%3d/%3d), len(%3d/%3d)",
+				LOG_MSG("XGA: Draw immediate rect: xy(%3d/%3d), len(%3d/%3d)",
 					xga.curx,xga.cury,xga.MAPcount,xga.MIPcount);
 #endif
 				XGA_DrawRectangle(val);
@@ -942,7 +945,7 @@ void XGA_DrawCmd(Bitu val, Bitu len) {
 				xga.waitcmd.datasize = 0;
 
 #if XGA_SHOW_COMMAND_TRACE == 1
-				//LOG_MSG("XGA: Draw wait rect, w/h(%3d/%3d), x/y1(%3d/%3d), x/y2(%3d/%3d), %4x",
+				LOG_MSG("XGA: Draw wait rect, w/h(%3d/%3d), x/y1(%3d/%3d), x/y2(%3d/%3d), %4x",
 					xga.MAPcount+1, xga.MIPcount+1,xga.curx,xga.cury,
 					(xga.curx + xga.MAPcount)&0x0fff,
 					(xga.cury + xga.MIPcount + 1)&0x0fff,val&0xffff);
@@ -952,19 +955,19 @@ void XGA_DrawCmd(Bitu val, Bitu len) {
 			break;
 		case 6: /* BitBLT */
 #if XGA_SHOW_COMMAND_TRACE == 1
-			//LOG_MSG("XGA: Blit Rect");
+			LOG_MSG("XGA: Blit Rect");
 #endif
 			XGA_BlitRect(val);
 			break;
 		case 7: /* Pattern fill */
 #if XGA_SHOW_COMMAND_TRACE == 1
-			//LOG_MSG("XGA: Pattern fill: src(%3d/%3d), dest(%3d/%3d), fill(%3d/%3d)",
+			LOG_MSG("XGA: Pattern fill: src(%3d/%3d), dest(%3d/%3d), fill(%3d/%3d)",
 				xga.curx,xga.cury,xga.destx,xga.desty,xga.MAPcount,xga.MIPcount);
 #endif
 			XGA_DrawPattern(val);
 			break;
 		default:
-			//LOG_MSG("XGA: Unhandled draw command %x", cmd);
+			LOG_MSG("XGA: Unhandled draw command %x", cmd);
 			break;
 	}
 }
@@ -1127,7 +1130,7 @@ void XGA_Write(Bitu port, Bitu val, Bitu len) {
 			xga.destx = val&0x3fff;
 			break;
 		case 0xb2e8:
-		//	LOG_MSG("COLOR_CMP not implemented");
+			LOG_MSG("COLOR_CMP not implemented");
 			break;
 		case 0xb6e8:
 			xga.backmix = val;
@@ -1161,7 +1164,7 @@ void XGA_Write(Bitu port, Bitu val, Bitu len) {
 				XGA_DrawWait(val, len);
 				
 			}
-			else //LOG_MSG("XGA: Wrote to port %x with %x, len %x", port, val, len);
+			else LOG_MSG("XGA: Wrote to port %x with %x, len %x", port, val, len);
 			break;
 	}
 }

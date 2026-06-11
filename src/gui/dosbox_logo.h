@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2010  The NTVDBM Team
+ *  Copyright (C) 2002-2010  The Winbox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,9 +16,8 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: NTVDBM_logo.h,v 1.5 2009-05-27 09:15:41 qbix79 Exp $ */
+/* $Id: Winbox_logo.h,v 1.5 2009-05-27 09:15:41 qbix79 Exp $ */
 
-/* NTVDBM icon designed by Ido Beeri */
 
 /* Select only one logo at the time */
 #define LOGO_1 1

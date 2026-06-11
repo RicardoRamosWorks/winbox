@@ -1,21 +1,3 @@
-/*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
-
 enum STRING_OP {
 	R_OUTSB,R_OUTSW,R_OUTSD,
 	R_INSB,R_INSW,R_INSD,
@@ -34,7 +16,7 @@ static void DoString(STRING_OP type) {
 	Bitu	add_mask;
 	Bitu	count,count_left;
 	Bits	add_index;
-
+	
 	si_base=BaseDS;
 	di_base=SegBase(es);
 	add_mask=AddrMaskTable[core.prefixes & PREFIX_ADDR];
@@ -60,115 +42,107 @@ static void DoString(STRING_OP type) {
 	}
 	add_index=cpu.direction;
 	if (count) switch (type) {
-		case R_OUTSB:
-			for (; count>0; count--) {
-				IO_WriteB(reg_dx,LoadMb(si_base+si_index));
-				si_index=(si_index+add_index) & add_mask;
-			}
-			break;
-		case R_OUTSW:
-			add_index<<=1;
-			for (; count>0; count--) {
-				IO_WriteW(reg_dx,LoadMw(si_base+si_index));
-				si_index=(si_index+add_index) & add_mask;
-			}
-			break;
-		case R_OUTSD:
-			add_index<<=2;
-			for (; count>0; count--) {
-				IO_WriteD(reg_dx,LoadMd(si_base+si_index));
-				si_index=(si_index+add_index) & add_mask;
-			}
-			break;
-		case R_INSB:
-			for (; count>0; count--) {
-				SaveMb(di_base+di_index,IO_ReadB(reg_dx));
-				di_index=(di_index+add_index) & add_mask;
-			}
-			break;
-		case R_INSW:
-			add_index<<=1;
-			for (; count>0; count--) {
-				SaveMw(di_base+di_index,IO_ReadW(reg_dx));
-				di_index=(di_index+add_index) & add_mask;
-			}
-			break;
-		case R_INSD:
-			add_index<<=2;
-			for (; count>0; count--) {
-				SaveMd(di_base+di_index,IO_ReadD(reg_dx));
-				di_index=(di_index+add_index) & add_mask;
-			}
-			break;
-		case R_STOSB:
-			for (; count>0; count--) {
-				SaveMb(di_base+di_index,reg_al);
-				di_index=(di_index+add_index) & add_mask;
-			}
-			break;
-		case R_STOSW:
-			add_index<<=1;
-			for (; count>0; count--) {
-				SaveMw(di_base+di_index,reg_ax);
-				di_index=(di_index+add_index) & add_mask;
-			}
-			break;
-		case R_STOSD:
-			add_index<<=2;
-			for (; count>0; count--) {
-				SaveMd(di_base+di_index,reg_eax);
-				di_index=(di_index+add_index) & add_mask;
-			}
-			break;
-		case R_MOVSB:
-			for (; count>0; count--) {
-				SaveMb(di_base+di_index,LoadMb(si_base+si_index));
-				di_index=(di_index+add_index) & add_mask;
-				si_index=(si_index+add_index) & add_mask;
-			}
-			break;
-		case R_MOVSW:
-			add_index<<=1;
-			for (; count>0; count--) {
-				SaveMw(di_base+di_index,LoadMw(si_base+si_index));
-				di_index=(di_index+add_index) & add_mask;
-				si_index=(si_index+add_index) & add_mask;
-			}
-			break;
-		case R_MOVSD:
-			add_index<<=2;
-			for (; count>0; count--) {
-				SaveMd(di_base+di_index,LoadMd(si_base+si_index));
-				di_index=(di_index+add_index) & add_mask;
-				si_index=(si_index+add_index) & add_mask;
-			}
-			break;
-		case R_LODSB:
-			for (; count>0; count--) {
-				reg_al=LoadMb(si_base+si_index);
-				si_index=(si_index+add_index) & add_mask;
-			}
-			break;
-		case R_LODSW:
-			add_index<<=1;
-			for (; count>0; count--) {
-				reg_ax=LoadMw(si_base+si_index);
-				si_index=(si_index+add_index) & add_mask;
-			}
-			break;
-		case R_LODSD:
-			add_index<<=2;
-			for (; count>0; count--) {
-				reg_eax=LoadMd(si_base+si_index);
-				si_index=(si_index+add_index) & add_mask;
-			}
-			break;
-		case R_SCASB:
+	case R_OUTSB:
+		for (;count>0;count--) {
+			IO_WriteB(reg_dx,LoadMb(si_base+si_index));
+			si_index=(si_index+add_index) & add_mask;
+		}
+		break;
+	case R_OUTSW:
+		add_index<<=1;
+		for (;count>0;count--) {
+			IO_WriteW(reg_dx,LoadMw(si_base+si_index));
+			si_index=(si_index+add_index) & add_mask;
+		}
+		break;
+	case R_OUTSD:
+		add_index<<=2;
+		for (;count>0;count--) {
+			IO_WriteD(reg_dx,LoadMd(si_base+si_index));
+			si_index=(si_index+add_index) & add_mask;
+		}
+		break;
+	case R_INSB:
+		for (;count>0;count--) {
+			SaveMb(di_base+di_index,IO_ReadB(reg_dx));
+			di_index=(di_index+add_index) & add_mask;
+		}
+		break;
+	case R_INSW:
+		add_index<<=1;
+		for (;count>0;count--) {
+			SaveMw(di_base+di_index,IO_ReadW(reg_dx));
+			di_index=(di_index+add_index) & add_mask;
+		}
+		break;
+	case R_STOSB:
+		for (;count>0;count--) {
+			SaveMb(di_base+di_index,reg_al);
+			di_index=(di_index+add_index) & add_mask;
+		}
+		break;
+	case R_STOSW:
+		add_index<<=1;
+		for (;count>0;count--) {
+			SaveMw(di_base+di_index,reg_ax);
+			di_index=(di_index+add_index) & add_mask;
+		}
+		break;
+	case R_STOSD:
+		add_index<<=2;
+		for (;count>0;count--) {
+			SaveMd(di_base+di_index,reg_eax);
+			di_index=(di_index+add_index) & add_mask;
+		}
+		break;
+	case R_MOVSB:
+		for (;count>0;count--) {
+			SaveMb(di_base+di_index,LoadMb(si_base+si_index));
+			di_index=(di_index+add_index) & add_mask;
+			si_index=(si_index+add_index) & add_mask;
+		}
+		break;
+	case R_MOVSW:
+		add_index<<=1;
+		for (;count>0;count--) {
+			SaveMw(di_base+di_index,LoadMw(si_base+si_index));
+			di_index=(di_index+add_index) & add_mask;
+			si_index=(si_index+add_index) & add_mask;
+		}
+		break;
+	case R_MOVSD:
+		add_index<<=2;
+		for (;count>0;count--) {
+			SaveMd(di_base+di_index,LoadMd(si_base+si_index));
+			di_index=(di_index+add_index) & add_mask;
+			si_index=(si_index+add_index) & add_mask;
+		}
+		break;
+	case R_LODSB:
+		for (;count>0;count--) {
+			reg_al=LoadMb(si_base+si_index);
+			si_index=(si_index+add_index) & add_mask;
+		}
+		break;
+	case R_LODSW:
+		add_index<<=1;
+		for (;count>0;count--) {
+			reg_ax=LoadMw(si_base+si_index);
+			si_index=(si_index+add_index) & add_mask;
+		}
+		break;
+	case R_LODSD:
+		add_index<<=2;
+		for (;count>0;count--) {
+			reg_eax=LoadMd(si_base+si_index);
+			si_index=(si_index+add_index) & add_mask;
+		}
+		break;
+	case R_SCASB:
 		{
 			Bit8u val2;
-			for (; count>0;) {
-				count--;
-				CPU_Cycles--;
+			for (;count>0;) {
+				count--;CPU_Cycles--;
 				val2=LoadMb(di_base+di_index);
 				di_index=(di_index+add_index) & add_mask;
 				if ((reg_al==val2)!=core.rep_zero) break;
@@ -176,13 +150,11 @@ static void DoString(STRING_OP type) {
 			CMPB(reg_al,val2,LoadD,0);
 		}
 		break;
-		case R_SCASW:
+	case R_SCASW:
 		{
-			add_index<<=1;
-			Bit16u val2;
-			for (; count>0;) {
-				count--;
-				CPU_Cycles--;
+			add_index<<=1;Bit16u val2;
+			for (;count>0;) {
+				count--;CPU_Cycles--;
 				val2=LoadMw(di_base+di_index);
 				di_index=(di_index+add_index) & add_mask;
 				if ((reg_ax==val2)!=core.rep_zero) break;
@@ -190,13 +162,11 @@ static void DoString(STRING_OP type) {
 			CMPW(reg_ax,val2,LoadD,0);
 		}
 		break;
-		case R_SCASD:
+	case R_SCASD:
 		{
-			add_index<<=2;
-			Bit32u val2;
-			for (; count>0;) {
-				count--;
-				CPU_Cycles--;
+			add_index<<=2;Bit32u val2;
+			for (;count>0;) {
+				count--;CPU_Cycles--;
 				val2=LoadMd(di_base+di_index);
 				di_index=(di_index+add_index) & add_mask;
 				if ((reg_eax==val2)!=core.rep_zero) break;
@@ -204,12 +174,11 @@ static void DoString(STRING_OP type) {
 			CMPD(reg_eax,val2,LoadD,0);
 		}
 		break;
-		case R_CMPSB:
+	case R_CMPSB:
 		{
 			Bit8u val1,val2;
-			for (; count>0;) {
-				count--;
-				CPU_Cycles--;
+			for (;count>0;) {
+				count--;CPU_Cycles--;
 				val1=LoadMb(si_base+si_index);
 				val2=LoadMb(di_base+di_index);
 				si_index=(si_index+add_index) & add_mask;
@@ -219,13 +188,11 @@ static void DoString(STRING_OP type) {
 			CMPB(val1,val2,LoadD,0);
 		}
 		break;
-		case R_CMPSW:
+	case R_CMPSW:
 		{
-			add_index<<=1;
-			Bit16u val1,val2;
-			for (; count>0;) {
-				count--;
-				CPU_Cycles--;
+			add_index<<=1;Bit16u val1,val2;
+			for (;count>0;) {
+				count--;CPU_Cycles--;
 				val1=LoadMw(si_base+si_index);
 				val2=LoadMw(di_base+di_index);
 				si_index=(si_index+add_index) & add_mask;
@@ -235,13 +202,11 @@ static void DoString(STRING_OP type) {
 			CMPW(val1,val2,LoadD,0);
 		}
 		break;
-		case R_CMPSD:
+	case R_CMPSD:
 		{
-			add_index<<=2;
-			Bit32u val1,val2;
-			for (; count>0;) {
-				count--;
-				CPU_Cycles--;
+			add_index<<=2;Bit32u val1,val2;
+			for (;count>0;) {
+				count--;CPU_Cycles--;
 				val1=LoadMd(si_base+si_index);
 				val2=LoadMd(di_base+di_index);
 				si_index=(si_index+add_index) & add_mask;
@@ -251,9 +216,9 @@ static void DoString(STRING_OP type) {
 			CMPD(val1,val2,LoadD,0);
 		}
 		break;
-		default:
-			LOG(LOG_CPU,LOG_ERROR)("Unhandled string op %d",type);
-		}
+	default:
+		LOG(LOG_CPU,LOG_ERROR)("Unhandled string op %d",type);
+	}
 	/* Clean up after certain amount of instructions */
 	reg_esi&=(~add_mask);
 	reg_esi|=(si_index & add_mask);

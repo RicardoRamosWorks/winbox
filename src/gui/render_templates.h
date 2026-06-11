@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,9 +11,9 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 #if DBPP == 8
@@ -94,66 +94,36 @@
 
 #if SBPP == 15
 #define SC scalerSourceCache.b16
-#ifdef WORDS_BIGENDIAN
-#if DBPP == 15   // GGGBBBBBxRRRRRGG -> xRRRRRGGGGGBBBBB
-#define PMAKE(_VAL) (((_VAL>>8)&0x00FF)|((_VAL<<8)&0xFF00))
-#elif DBPP == 16 // gggBBBBBxRRRRRGg -> RRRRRGggggGBBBBB
-#define PMAKE(_VAL) (((_VAL>>8)&0x001F)|((_VAL>>7)&0x01C0)|((_VAL<<9)&0xFE00)|((_VAL<<4)&0x0020))
-#elif DBPP == 32 // GggBBBbbxRRRrrGG -> 00000000RRRrrRRRGGGggGGGBBBbbBBB
-#define PMAKE(_VAL) (((_VAL<<17)&0x00F80000)|((_VAL<<12)&0x00070000)|((_VAL<<14)&0x0000C000)|((_VAL>>2)&0x00003800)|((_VAL<<9)&0x00000600)|((_VAL>>7)&0x00000100)|((_VAL>>5)&0x000000F8)|((_VAL>>10)&0x00000007))
-#endif
-#else
 #if DBPP == 15
 #define PMAKE(_VAL) (_VAL)
-#elif DBPP == 16 // xRRRRRGggggBBBBB -> RRRRRGggggGBBBBB
-#define PMAKE(_VAL) ((_VAL & 31)|((_VAL & ~31)<<1)|((_VAL&0x0200)>>4))
-#elif DBPP == 32 // xRRRrrGGGggBBBbb -> RRRrrRRRGGGggGGGBBBbbBBB
-#define PMAKE(_VAL)  (((_VAL&(31<<10))<<9)|((_VAL&(31<<5))<<6)|((_VAL&31)<<3)|((_VAL&(7<<12))<<4)|((_VAL&(7<<7))<<1)|((_VAL&(7<<2))>>2))
-#endif
+#elif DBPP == 16
+#define PMAKE(_VAL) (((_VAL) & 31) | ((_VAL) & ~31) << 1)
+#elif DBPP == 32
+#define PMAKE(_VAL)  (((_VAL&(31<<10))<<9)|((_VAL&(31<<5))<<6)|((_VAL&31)<<3))
 #endif
 #define SRCTYPE Bit16u
 #endif
 
 #if SBPP == 16
 #define SC scalerSourceCache.b16
-#ifdef WORDS_BIGENDIAN
-#if DBPP == 15   // GGgBBBBBRRRRRGGG -> 0RRRRRGGGGGBBBBB
-#define PMAKE(_VAL) (((_VAL>>8)&0x001F)|((_VAL>>9)&0x0060)|((_VAL<<7)&0x7F80))
-#elif DBPP == 16 // GGGBBBBBRRRRRGGG -> RRRRRGGGGGGBBBBB
-#define PMAKE(_VAL) (((_VAL>>8)&0x00FF)|((_VAL<<8)&0xFF00))
-#elif DBPP == 32 // gggBBBbbRRRrrGGg -> RRRrrRRRGGggggGGBBBbbBBB
-#define PMAKE(_VAL) (((_VAL<<16)&0x00F80000)|((_VAL<<11)&0x00070000)|((_VAL<<13)&0x0000E000)|((_VAL>>3)&0x00001C00)|((_VAL<<7)&0x00000300)|((_VAL>>5)&0x000000F8)|((_VAL>>10)&0x00000007))
-#endif
-#else
-#if DBPP == 15   // RRRRRGGGGGgBBBBB -> 0RRRRRGGGGGBBBBB
-#define PMAKE(_VAL) (((_VAL&~63)>>1)|(_VAL&31))
+#if DBPP == 15
+#define PMAKE(_VAL) (((_VAL&~31)>>1)|(_VAL&31))
 #elif DBPP == 16
 #define PMAKE(_VAL) (_VAL)
-#elif DBPP == 32 // RRRrrGGggggBBBbb -> RRRrrRRRGGggggGGBBBbbBBB
-#define PMAKE(_VAL)  (((_VAL&(31<<11))<<8)|((_VAL&(63<<5))<<5)|((_VAL&0xE01F)<<3)|((_VAL&(3<<9))>>1)|((_VAL&(7<<2))>>2))
-#endif
+#elif DBPP == 32
+#define PMAKE(_VAL)  (((_VAL&(31<<11))<<8)|((_VAL&(63<<5))<<5)|((_VAL&31)<<3))
 #endif
 #define SRCTYPE Bit16u
 #endif
 
 #if SBPP == 32
 #define SC scalerSourceCache.b32
-#ifdef WORDS_BIGENDIAN
-#if DBPP == 15   // BBBBBbbbGGGGGgggRRRRRrrrxxxxxxxx -> 0RRRRRGGGGGBBBBB
-#define PMAKE(_VAL) (PTYPE)(((_VAL>>27)&0x001F)|((_VAL>>14)&0x03E0)|((_VAL>>1)&0x7C00))
-#elif DBPP == 16 // BBBBBbbbGGGGGGggRRRRRrrrxxxxxxxx -> RRRRRGGGGGGBBBBB
-#define PMAKE(_VAL) (PTYPE)(((_VAL>>27)&0x001F)|((_VAL>>13)&0x07E0)|(_VAL&0xF800))
-#elif DBPP == 32 // BBBBBBBBGGGGGGGGRRRRRRRRxxxxxxxx -> RRRRRRRRGGGGGGGGBBBBBBBB
-#define PMAKE(_VAL) (((_VAL>>24)&0x000000FF)|((_VAL>>8)&0x0000FF00)|((_VAL<<8)&0x00FF0000))
-#endif
-#else
-#if DBPP == 15   // RRRRRrrrGGGGGgggBBBBBbbb -> 0RRRRRGGGGGBBBBB
+#if DBPP == 15
 #define PMAKE(_VAL) (PTYPE)(((_VAL&(31<<19))>>9)|((_VAL&(31<<11))>>6)|((_VAL&(31<<3))>>3))
-#elif DBPP == 16 // RRRRRrrrGGGGGGggBBBBBbbb -> RRRRRGGGGGGBBBBB
-#define PMAKE(_VAL) (PTYPE)(((_VAL&(31<<19))>>8)|((_VAL&(63<<10))>>5)|((_VAL&(31<<3))>>3))
+#elif DBPP == 16
+#define PMAKE(_VAL) (PTYPE)(((_VAL&(31<<19))>>8)|((_VAL&(63<<10))>>4)|((_VAL&(31<<3))>>3))
 #elif DBPP == 32
 #define PMAKE(_VAL) (_VAL)
-#endif
 #endif
 #define SRCTYPE Bit32u
 #endif
@@ -199,13 +169,13 @@ static void conc3d(Cache,SBPP,DBPP) (const void * s) {
 	Bitu b;
 	bool hadChange = false;
 	/* This should also copy the surrounding pixels but it looks nice enough without */
-	for (b=0; b<render.scale.blocks; b++) {
+	for (b=0;b<render.scale.blocks;b++) {
 #if (SBPP == 9)
-		for (Bitu x=0; x<SCALER_BLOCKSIZE; x++) {
+		for (Bitu x=0;x<SCALER_BLOCKSIZE;x++) {
 			PTYPE pixel = PMAKE(src[x]);
 			if (pixel != fc[x]) {
-#else
-		for (Bitu x=0; x<SCALER_BLOCKSIZE; x+=sizeof(Bitu)/sizeof(SRCTYPE)) {
+#else 
+		for (Bitu x=0;x<SCALER_BLOCKSIZE;x+=sizeof(Bitu)/sizeof(SRCTYPE)) {
 			if (*(Bitu const*)&src[x] != *(Bitu*)&sc[x]) {
 #endif
 				do {
@@ -268,24 +238,6 @@ static void conc3d(Cache,SBPP,DBPP) (const void * s) {
 #undef SCALERHEIGHT
 #undef SCALERFUNC
 
-#define SCALERNAME		Normal3x
-#define SCALERWIDTH		3
-#define SCALERHEIGHT	3
-#define SCALERFUNC								\
-	line0[0] = P;								\
-	line0[1] = P;								\
-	line0[2] = P;								\
-	line1[0] = P;								\
-	line1[1] = P;								\
-	line1[2] = P;								\
-	line2[0] = P;								\
-	line2[1] = P;								\
-	line2[2] = P;
-#include "render_simple.h"
-#undef SCALERNAME
-#undef SCALERWIDTH
-#undef SCALERHEIGHT
-#undef SCALERFUNC
 
 #define SCALERNAME		NormalDw
 #define SCALERWIDTH		2
@@ -333,30 +285,7 @@ static void conc3d(Cache,SBPP,DBPP) (const void * s) {
 #undef SCALERHEIGHT
 #undef SCALERFUNC
 
-#define SCALERNAME		TV3x
-#define SCALERWIDTH		3
-#define SCALERHEIGHT	3
-#define SCALERFUNC							\
-{											\
-	Bitu halfpixel=(((P & redblueMask) * 5) >> 3) & redblueMask;	\
-	halfpixel|=(((P & greenMask) * 5) >> 3) & greenMask;			\
-	line0[0]=P;								\
-	line0[1]=P;								\
-	line0[2]=P;								\
-	line1[0]=halfpixel;						\
-	line1[1]=halfpixel;						\
-	line1[2]=halfpixel;						\
-	halfpixel=(((P & redblueMask) * 5) >> 4) & redblueMask;	\
-	halfpixel|=(((P & greenMask) * 5) >> 4) & greenMask;			\
-	line2[0]=halfpixel;						\
-	line2[1]=halfpixel;						\
-	line2[2]=halfpixel;						\
-}
-#include "render_simple.h"
-#undef SCALERNAME
-#undef SCALERWIDTH
-#undef SCALERHEIGHT
-#undef SCALERFUNC
+
 
 #define SCALERNAME		RGB2x
 #define SCALERWIDTH		2
@@ -372,24 +301,7 @@ static void conc3d(Cache,SBPP,DBPP) (const void * s) {
 #undef SCALERHEIGHT
 #undef SCALERFUNC
 
-#define SCALERNAME		RGB3x
-#define SCALERWIDTH		3
-#define SCALERHEIGHT	3
-#define SCALERFUNC						\
-	line0[0]=P;							\
-	line0[1]=P & greenMask;				\
-	line0[2]=P & blueMask;				\
-	line1[0]=P & greenMask;				\
-	line1[1]=P & redMask; 						\
-	line1[2]=P;				\
-	line2[0]=P;				\
-	line2[1]=P & blueMask;				\
-	line2[2]=P & redMask;
-#include "render_simple.h"
-#undef SCALERNAME
-#undef SCALERWIDTH
-#undef SCALERHEIGHT
-#undef SCALERFUNC
+
 
 #define SCALERNAME		Scan2x
 #define SCALERWIDTH		2
@@ -405,24 +317,7 @@ static void conc3d(Cache,SBPP,DBPP) (const void * s) {
 #undef SCALERHEIGHT
 #undef SCALERFUNC
 
-#define SCALERNAME		Scan3x
-#define SCALERWIDTH		3
-#define SCALERHEIGHT	3
-#define SCALERFUNC			\
-	line0[0]=P;				\
-	line0[1]=P;				\
-	line0[2]=P;				\
-	line1[0]=P;				\
-	line1[1]=P;				\
-	line1[2]=P;				\
-	line2[0]=0;				\
-	line2[1]=0;				\
-	line2[2]=0;
-#include "render_simple.h"
-#undef SCALERNAME
-#undef SCALERWIDTH
-#undef SCALERHEIGHT
-#undef SCALERFUNC
+
 
 #endif		//#if RENDER_USE_ADVANCED_SCALERS>0
 
@@ -430,165 +325,7 @@ static void conc3d(Cache,SBPP,DBPP) (const void * s) {
 
 /* Complex scalers */
 
-#if RENDER_USE_ADVANCED_SCALERS>2
 
-#if (SBPP == DBPP)
-
-
-#if (DBPP > 8)
-
-#include "render_templates_hq.h"
-
-#define SCALERNAME		HQ2x
-#define SCALERWIDTH		2
-#define SCALERHEIGHT	2
-#include "render_templates_hq2x.h"
-#define SCALERFUNC		conc2d(Hq2x,SBPP)(line0, line1, fc)
-#include "render_loops.h"
-#undef SCALERNAME
-#undef SCALERWIDTH
-#undef SCALERHEIGHT
-#undef SCALERFUNC
-
-#define SCALERNAME		HQ3x
-#define SCALERWIDTH		3
-#define SCALERHEIGHT	3
-#include "render_templates_hq3x.h"
-#define SCALERFUNC		conc2d(Hq3x,SBPP)(line0, line1, line2, fc)
-#include "render_loops.h"
-#undef SCALERNAME
-#undef SCALERWIDTH
-#undef SCALERHEIGHT
-#undef SCALERFUNC
-
-#include "render_templates_sai.h"
-
-#define SCALERNAME		Super2xSaI
-#define SCALERWIDTH		2
-#define SCALERHEIGHT	2
-#define SCALERFUNC		conc2d(Super2xSaI,SBPP)(line0, line1, fc)
-#include "render_loops.h"
-#undef SCALERNAME
-#undef SCALERWIDTH
-#undef SCALERHEIGHT
-#undef SCALERFUNC
-
-#define SCALERNAME		SuperEagle
-#define SCALERWIDTH		2
-#define SCALERHEIGHT	2
-#define SCALERFUNC		conc2d(SuperEagle,SBPP)(line0, line1, fc)
-#include "render_loops.h"
-#undef SCALERNAME
-#undef SCALERWIDTH
-#undef SCALERHEIGHT
-#undef SCALERFUNC
-
-#define SCALERNAME		_2xSaI
-#define SCALERWIDTH		2
-#define SCALERHEIGHT	2
-#define SCALERFUNC		conc2d(_2xSaI,SBPP)(line0, line1, fc)
-#include "render_loops.h"
-#undef SCALERNAME
-#undef SCALERWIDTH
-#undef SCALERHEIGHT
-#undef SCALERFUNC
-
-#define SCALERNAME		AdvInterp2x
-#define SCALERWIDTH		2
-#define SCALERHEIGHT	2
-#define SCALERFUNC												\
-	if (C1 != C7 && C3 != C5) {									\
-		line0[0] = C3 == C1 ? interp_w2(C3,C4,5U,3U) : C4;		\
-		line0[1] = C1 == C5 ? interp_w2(C5,C4,5U,3U) : C4;		\
-		line1[0] = C3 == C7 ? interp_w2(C3,C4,5U,3U) : C4;		\
-		line1[1] = C7 == C5 ? interp_w2(C5,C4,5U,3U) : C4;		\
-	} else {													\
-		line0[0] = line0[1] = C4;								\
-		line1[0] = line1[1] = C4;								\
-	}
-#include "render_loops.h"
-#undef SCALERNAME
-#undef SCALERWIDTH
-#undef SCALERHEIGHT
-#undef SCALERFUNC
-
-//TODO, come up with something better for this one
-#define SCALERNAME		AdvInterp3x
-#define SCALERWIDTH		3
-#define SCALERHEIGHT	3
-#define SCALERFUNC												\
-	if ((C1 != C7) && (C3 != C5)) {													\
-		line0[0] = C3 == C1 ?  interp_w2(C3,C4,5U,3U) : C4;												\
-		line0[1] = (C3 == C1 && C4 != C2) || (C5 == C1 && C4 != C0) ? C1 : C4;		\
-		line0[2] = C5 == C1 ?  interp_w2(C5,C4,5U,3U) : C4;												\
-		line1[0] = (C3 == C1 && C4 != C6) || (C3 == C7 && C4 != C0) ? C3 : C4;		\
-		line1[1] = C4;																\
-		line1[2] = (C5 == C1 && C4 != C8) || (C5 == C7 && C4 != C2) ? C5 : C4;		\
-		line2[0] = C3 == C7 ?  interp_w2(C3,C4,5U,3U) : C4;												\
-		line2[1] = (C3 == C7 && C4 != C8) || (C5 == C7 && C4 != C6) ? C7 : C4;		\
-		line2[2] = C5 == C7 ?  interp_w2(C5,C4,5U,3U) : C4;												\
-	} else {																		\
-		line0[0] = line0[1] = line0[2] = C4;										\
-		line1[0] = line1[1] = line1[2] = C4;										\
-		line2[0] = line2[1] = line2[2] = C4;										\
-	}
-#include "render_loops.h"
-#undef SCALERNAME
-#undef SCALERWIDTH
-#undef SCALERHEIGHT
-#undef SCALERFUNC
-
-#endif // #if (DBPP > 8)
-
-#define SCALERNAME		AdvMame2x
-#define SCALERWIDTH		2
-#define SCALERHEIGHT	2
-#define SCALERFUNC												\
-	if (C1 != C7 && C3 != C5) {									\
-		line0[0] = C3 == C1 ? C3 : C4;							\
-		line0[1] = C1 == C5 ? C5 : C4;							\
-		line1[0] = C3 == C7 ? C3 : C4;							\
-		line1[1] = C7 == C5 ? C5 : C4;							\
-	} else {													\
-		line0[0] = line0[1] = C4;								\
-		line1[0] = line1[1] = C4;								\
-	}
-#include "render_loops.h"
-#undef SCALERNAME
-#undef SCALERWIDTH
-#undef SCALERHEIGHT
-#undef SCALERFUNC
-
-#define SCALERNAME		AdvMame3x
-#define SCALERWIDTH		3
-#define SCALERHEIGHT	3
-#define SCALERFUNC																	\
-	if ((C1 != C7) && (C3 != C5)) {													\
-		line0[0] = C3 == C1 ?  C3 : C4;												\
-		line0[1] = (C3 == C1 && C4 != C2) || (C5 == C1 && C4 != C0) ? C1 : C4;		\
-		line0[2] = C5 == C1 ?  C5 : C4;												\
-		line1[0] = (C3 == C1 && C4 != C6) || (C3 == C7 && C4 != C0) ? C3 : C4;		\
-		line1[1] = C4;																\
-		line1[2] = (C5 == C1 && C4 != C8) || (C5 == C7 && C4 != C2) ? C5 : C4;		\
-		line2[0] = C3 == C7 ?  C3 : C4;												\
-		line2[1] = (C3 == C7 && C4 != C8) || (C5 == C7 && C4 != C6) ? C7 : C4;		\
-		line2[2] = C5 == C7 ?  C5 : C4;												\
-	} else {																		\
-		line0[0] = line0[1] = line0[2] = C4;										\
-		line1[0] = line1[1] = line1[2] = C4;										\
-		line2[0] = line2[1] = line2[2] = C4;										\
-	}
-
-#include "render_loops.h"
-#undef SCALERNAME
-#undef SCALERWIDTH
-#undef SCALERHEIGHT
-#undef SCALERFUNC
-
-
-#endif // (SBPP == DBPP) && !defined (CACHEWITHPAL)
-
-#endif // #if RENDER_USE_ADVANCED_SCALERS>2
 
 #undef PSIZE
 #undef PTYPE

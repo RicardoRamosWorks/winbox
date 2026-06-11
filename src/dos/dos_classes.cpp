@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2026 RicardoRamosWorks.com and The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -11,11 +11,12 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+/* $Id: dos_classes.cpp,v 1.58 2009-07-09 20:06:57 c2woody Exp $ */
 
 #include <string.h>
 #include <stdlib.h>
@@ -55,8 +56,8 @@ void DOS_InfoBlock::SetLocation(Bit16u segment) {
 	seg = segment;
 	pt=PhysMake(seg,0);
 	/* Clear the initial Block */
-	for(Bitu i=0; i<sizeof(sDIB); i++) mem_writeb(pt+i,0xff);
-	for(Bitu i=0; i<14; i++) mem_writeb(pt+i,0);
+	for(Bitu i=0;i<sizeof(sDIB);i++) mem_writeb(pt+i,0xff);
+	for(Bitu i=0;i<14;i++) mem_writeb(pt+i,0);
 
 	sSave(sDIB,regCXfrom5e,(Bit16u)0);
 	sSave(sDIB,countLRUcache,(Bit16u)0);
@@ -73,7 +74,7 @@ void DOS_InfoBlock::SetLocation(Bit16u segment) {
 	sSave(sDIB,a20FixOfs,(Bit16u)0);
 	sSave(sDIB,pspLastIfHMA,(Bit16u)0);
 	sSave(sDIB,blockDevices,(Bit8u)0);
-
+	
 	sSave(sDIB,bootDrive,(Bit8u)0);
 	sSave(sDIB,useDwordMov,(Bit8u)1);
 	sSave(sDIB,extendedSize,(Bit16u)(MEM_TotalPages()*4-1024));
@@ -157,10 +158,6 @@ void DOS_InfoBlock::SetUMBChainState(Bit8u _umbchaining) {
 	sSave(sDIB,chainingUMB,_umbchaining);
 }
 
-void DOS_InfoBlock::SetBlockDevices(Bit8u _count) {
-	sSave(sDIB,blockDevices,_count);
-}
-
 RealPt DOS_InfoBlock::GetPointer(void) {
 	return RealMake(seg,offsetof(sDIB,firstDPB));
 }
@@ -176,15 +173,15 @@ Bit16u DOS_PSP::rootpsp = 0;
 
 void DOS_PSP::MakeNew(Bit16u mem_size) {
 	/* get previous */
-	//	DOS_PSP prevpsp(dos.psp());
+//	DOS_PSP prevpsp(dos.psp());
 	/* Clear it first */
 	Bitu i;
-	for (i=0; i<sizeof(sPSP); i++) mem_writeb(pt+i,0);
+	for (i=0;i<sizeof(sPSP);i++) mem_writeb(pt+i,0);
 	// Set size
 	sSave(sPSP,next_seg,seg+mem_size);
 	/* far call opcode */
 	sSave(sPSP,far_call,0xea);
-	// far call to interrupt 0x21 - faked for bill & ted
+	// far call to interrupt 0x21 - faked for bill & ted 
 	// lets hope nobody really uses this address
 	sSave(sPSP,cpm_entry,RealMake(0xDEAD,0xFFFF));
 	/* Standard blocks,int 20  and int21 retf */
@@ -205,10 +202,10 @@ void DOS_PSP::MakeNew(Bit16u mem_size) {
 	/* Init file pointer and max_files */
 	sSave(sPSP,file_table,RealMake(seg,offsetof(sPSP,files)));
 	sSave(sPSP,max_files,20);
-	for (Bit16u ct=0; ct<20; ct++) SetFileHandle(ct,0xff);
+	for (Bit16u ct=0;ct<20;ct++) SetFileHandle(ct,0xff);
 
 	/* User Stack pointer */
-	//	if (prevpsp.GetSegment()!=0) sSave(sPSP,stack,prevpsp.GetStack());
+//	if (prevpsp.GetSegment()!=0) sSave(sPSP,stack,prevpsp.GetStack());
 
 	if (rootpsp==0) rootpsp = seg;
 }
@@ -228,29 +225,29 @@ void DOS_PSP::SetFileHandle(Bit16u index, Bit8u handle) {
 
 Bit16u DOS_PSP::FindFreeFileEntry(void) {
 	PhysPt files=Real2Phys(sGet(sPSP,file_table));
-	for (Bit16u i=0; i<sGet(sPSP,max_files); i++) {
+	for (Bit16u i=0;i<sGet(sPSP,max_files);i++) {
 		if (mem_readb(files+i)==0xff) return i;
-	}
+	}	
 	return 0xff;
 }
 
 Bit16u DOS_PSP::FindEntryByHandle(Bit8u handle) {
 	PhysPt files=Real2Phys(sGet(sPSP,file_table));
-	for (Bit16u i=0; i<sGet(sPSP,max_files); i++) {
+	for (Bit16u i=0;i<sGet(sPSP,max_files);i++) {
 		if (mem_readb(files+i)==handle) return i;
-	}
+	}	
 	return 0xFF;
 }
 
 void DOS_PSP::CopyFileTable(DOS_PSP* srcpsp,bool createchildpsp) {
 	/* Copy file table from calling process */
-	for (Bit16u i=0; i<20; i++) {
+	for (Bit16u i=0;i<20;i++) {
 		Bit8u handle = srcpsp->GetFileHandle(i);
 		if(createchildpsp)
 		{	//copy obeying not inherit flag.(but dont duplicate them)
 			bool allowCopy = true;//(handle==0) || ((handle>0) && (FindEntryByHandle(handle)==0xff));
 			if((handle<DOS_FILES) && Files[handle] && !(Files[handle]->flags & DOS_NOT_INHERIT) && allowCopy)
-			{
+			{   
 				Files[handle]->AddRef();
 				SetFileHandle(i,handle);
 			}
@@ -267,7 +264,7 @@ void DOS_PSP::CopyFileTable(DOS_PSP* srcpsp,bool createchildpsp) {
 }
 
 void DOS_PSP::CloseFiles(void) {
-	for (Bit16u i=0; i<sGet(sPSP,max_files); i++) {
+	for (Bit16u i=0;i<sGet(sPSP,max_files);i++) {
 		DOS_CloseFile(i);
 	}
 }
@@ -304,18 +301,19 @@ void DOS_PSP::SetFCB2(RealPt src) {
 }
 
 bool DOS_PSP::SetNumFiles(Bit16u fileNum) {
-	//20 minimum. clipper program.
-	if (fileNum < 20) fileNum = 20;
-
-	if (fileNum > 20 && ((fileNum+2) > sGet(sPSP,max_files))) {
+	if (fileNum>20) {
 		// Allocate needed paragraphs
 		fileNum+=2;	// Add a few more files for safety
 		Bit16u para = (fileNum/16)+((fileNum%16)>0);
 		RealPt data	= RealMake(DOS_GetMemory(para),0);
-		for (Bit16u i=0; i<fileNum; i++) mem_writeb(Real2Phys(data)+i,(i<20)?GetFileHandle(i):0xFF);
 		sSave(sPSP,file_table,data);
-	}
-	sSave(sPSP,max_files,fileNum);
+		sSave(sPSP,max_files,fileNum);
+		Bit16u i;
+		for (i=0; i<20; i++)		SetFileHandle(i,(Bit8u)sGet(sPSP,files[i]));
+		for (i=20; i<fileNum; i++)	SetFileHandle(i,0xFF);
+	} else {
+		sSave(sPSP,max_files,fileNum);
+	};
 	return true;
 }
 
@@ -325,7 +323,7 @@ void DOS_DTA::SetupSearch(Bit8u _sdrive,Bit8u _sattr,char * pattern) {
 	sSave(sDTA,sattr,_sattr);
 	/* Fill with spaces */
 	Bitu i;
-	for (i=0; i<11; i++) mem_writeb(pt+offsetof(sDTA,sname)+i,' ');
+	for (i=0;i<11;i++) mem_writeb(pt+offsetof(sDTA,sname)+i,' ');
 	char * find_ext;
 	find_ext=strchr(pattern,'.');
 	if (find_ext) {
@@ -340,7 +338,7 @@ void DOS_DTA::SetupSearch(Bit8u _sdrive,Bit8u _sattr,char * pattern) {
 }
 
 void DOS_DTA::SetResult(const char * _name,Bit32u _size,Bit16u _date,Bit16u _time,Bit8u _attr) {
-	MEM_BlockWrite(pt+offsetof(sDTA,name),(void *)_name,strlen(_name)+1);
+	MEM_BlockWrite(pt+offsetof(sDTA,name),(void *)_name,DOS_NAMELENGTH_ASCII);
 	sSave(sDTA,size,_size);
 	sSave(sDTA,date,_date);
 	sSave(sDTA,time,_time);
@@ -371,8 +369,8 @@ void DOS_DTA::GetSearchParams(Bit8u & attr,char * pattern) {
 
 }
 
-DOS_FCB::DOS_FCB(Bit16u seg,Bit16u off,bool allow_extended) {
-	SetPt(seg,off);
+DOS_FCB::DOS_FCB(Bit16u seg,Bit16u off,bool allow_extended) { 
+	SetPt(seg,off); 
 	real_pt=pt;
 	extended=false;
 	if (allow_extended) {
@@ -389,10 +387,10 @@ bool DOS_FCB::Extended(void) {
 
 void DOS_FCB::Create(bool _extended) {
 	Bitu fill;
-	if (_extended) fill=33+7;
-	else fill=33;
+	if (_extended) fill=36+7;
+	else fill=36;
 	Bitu i;
-	for (i=0; i<fill; i++) mem_writeb(real_pt+i,0);
+	for (i=0;i<fill;i++) mem_writeb(real_pt+i,0);
 	pt=real_pt;
 	if (_extended) {
 		mem_writeb(real_pt,0xff);
@@ -435,10 +433,6 @@ void DOS_FCB::GetSeqData(Bit8u & _fhandle,Bit16u & _rec_size) {
 	_rec_size=(Bit16u)sGet(sFCB,rec_size);
 }
 
-void DOS_FCB::SetSeqData(Bit8u _fhandle,Bit16u _rec_size) {
-	sSave(sFCB,file_handle,_fhandle);
-	sSave(sFCB,rec_size,_rec_size);
-}
 
 void DOS_FCB::GetRandom(Bit32u & _random) {
 	_random=sGet(sFCB,rndm);
@@ -448,23 +442,20 @@ void DOS_FCB::SetRandom(Bit32u _random) {
 	sSave(sFCB,rndm,_random);
 }
 
-void DOS_FCB::ClearBlockRecsize(void) {
-	sSave(sFCB,cur_block,0);
-	sSave(sFCB,rec_size,0);
-}
 void DOS_FCB::FileOpen(Bit8u _fhandle) {
 	sSave(sFCB,drive,GetDrive()+1);
 	sSave(sFCB,file_handle,_fhandle);
 	sSave(sFCB,cur_block,0);
 	sSave(sFCB,rec_size,128);
-	//	sSave(sFCB,rndm,0); // breaks Jewels of darkness.
+//	sSave(sFCB,rndm,0); // breaks Jewels of darkness. 
+	Bit8u temp = RealHandle(_fhandle);
 	Bit32u size = 0;
-	Files[_fhandle]->Seek(&size,DOS_SEEK_END);
+	Files[temp]->Seek(&size,DOS_SEEK_END);
 	sSave(sFCB,filesize,size);
 	size = 0;
-	Files[_fhandle]->Seek(&size,DOS_SEEK_SET);
-	sSave(sFCB,time,Files[_fhandle]->time);
-	sSave(sFCB,date,Files[_fhandle]->date);
+	Files[temp]->Seek(&size,DOS_SEEK_SET);
+	sSave(sFCB,time,Files[temp]->time);
+	sSave(sFCB,date,Files[temp]->date);
 }
 
 bool DOS_FCB::Valid() {
@@ -501,15 +492,8 @@ void DOS_FCB::SetAttr(Bit8u attr) {
 	if(extended) mem_writeb(pt - 1,attr);
 }
 
-void DOS_FCB::SetResult(Bit32u size,Bit16u date,Bit16u time,Bit8u attr) {
-	mem_writed(pt + 0x1d,size);
-	mem_writew(pt + 0x19,date);
-	mem_writew(pt + 0x17,time);
-	mem_writeb(pt + 0x0c,attr);
-}
-
 void DOS_SDA::Init() {
 	/* Clear */
-	for(Bitu i=0; i<sizeof(sSDA); i++) mem_writeb(pt+i,0x00);
-	sSave(sSDA,drive_crit_error,0xff);
+	for(Bitu i=0;i<sizeof(sSDA);i++) mem_writeb(pt+i,0x00);
+	sSave(sSDA,drive_crit_error,0xff);   
 }
