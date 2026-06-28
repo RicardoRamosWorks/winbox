@@ -44,14 +44,6 @@ extern void GFX_SetTitle(Bit32s cycles ,Bits frameskip,bool paused);
 #endif
 #endif
 
-// OTIMIZAÇÃO: Macro para Branch Prediction. 
-// Exceções e erros são raros (caminhos frios). Isso ajuda o processador a não prever falhas.
-#if defined(__GNUC__) || defined(__clang__)
-#define UNLIKELY(x) __builtin_expect(!!(x), 0)
-#else
-#define UNLIKELY(x) (x)
-#endif
-
 CPU_Regs cpu_regs;
 CPUBlock cpu;
 Segments Segs;
@@ -76,6 +68,29 @@ Bitu CPU_flag_id_toggle=0;
 
 Bitu CPU_PrefetchQueueSize=0;
 
+bool lmsw_allow_clear_pe_bit = false;
+bool mask_stack_ptr_on_enter = false;
+
+bool CPU_NMI_gate = true;
+bool CPU_NMI_active = false;
+bool CPU_NMI_pending = false;
+bool do_seg_limits = false;
+
+bool do_pse = false;
+bool enable_pse = false;
+Bit8u enable_pse_extbits = 0;
+Bit8u enable_pse_extmask = 0;
+
+bool enable_fpu = true;
+bool enable_msr = true;
+bool enable_syscall = true;
+bool enable_cmpxchg8b = true;
+
+bool cpu_double_fault_enable = false;
+bool cpu_triple_fault_reset = false;
+
+Bit32u cpu_cr4 = 0;
+
 void CPU_Core_Full_Init(void);
 void CPU_Core_Normal_Init(void);
 void CPU_Core_Simple_Init(void);
@@ -90,33 +105,46 @@ void CPU_Core_Dynrec_Cache_Init(bool enable_cache);
 void CPU_Core_Dynrec_Cache_Close(void);
 #endif
 
+/* In debug mode exceptions are tested and dosbox exits when 
+ * a unhandled exception state is detected. 
+ * USE CHECK_EXCEPT to raise an exception in that case to see if that exception
+ * solves the problem.
+ * 
+ * In non-debug mode dosbox doesn't do detection (and hence doesn't crash at
+ * that point). (game might crash later due to the unhandled exception) */
+
 #if C_DEBUG
+// #define CPU_CHECK_EXCEPT 1
+// #define CPU_CHECK_IGNORE 1
+ /* Use CHECK_EXCEPT when something doesn't work to see if a exception is 
+ * needed that isn't enabled by default.*/
 #else
+/* NORMAL NO CHECKING => More Speed */
 #define CPU_CHECK_IGNORE 1
 #endif /* C_DEBUG */
 
-// OTIMIZAÇÃO: Aplicação do UNLIKELY nas condições de checagem.
 #if defined(CPU_CHECK_IGNORE)
 #define CPU_CHECK_COND(cond,msg,exc,sel) {	\
-	if (UNLIKELY(cond)) do {} while (0);	\
+	if (cond) do {} while (0);				\
 }
 #elif defined(CPU_CHECK_EXCEPT)
 #define CPU_CHECK_COND(cond,msg,exc,sel) {	\
-	if (UNLIKELY(cond)) {					\
+	if (cond) {					\
 		CPU_Exception(exc,sel);		\
 		return;				\
 	}					\
 }
 #else
 #define CPU_CHECK_COND(cond,msg,exc,sel) {	\
-	if (UNLIKELY(cond)) E_Exit(msg);		\
+	if (cond) E_Exit(msg);			\
 }
 #endif
+
 
 void Descriptor::Load(PhysPt address) {
 	cpu.mpl=0;
 	Bit32u* data = (Bit32u*)&saved;
-	*data     = mem_readd(address);
+	*data	  = mem_readd(address);
 	*(data+1) = mem_readd(address+4);
 	cpu.mpl=3;
 }
@@ -125,7 +153,7 @@ void Descriptor:: Save(PhysPt address) {
 	Bit32u* data = (Bit32u*)&saved;
 	mem_writed(address,*data);
 	mem_writed(address+4,*(data+1));
-	cpu.mpl=3; // CORREÇÃO: "03" alterado para "3" para evitar confusão com octal.
+	cpu.mpl=03;
 }
 
 
@@ -220,6 +248,33 @@ bool CPU_PUSHF(Bitu use32) {
 		CPU_Push32(reg_flags & 0xfcffff);
 	else CPU_Push16(reg_flags);
 	return false;
+}
+
+void CPU_SetCPL(Bitu newcpl) {
+	cpu.cpl = newcpl;
+}
+
+void CPU_CheckSegment(const enum SegNames segi) {
+	bool needs_invalidation=false;
+	Descriptor desc;
+
+	if (!cpu.gdt.GetDescriptor(SegValue(segi),desc)) {
+		needs_invalidation=true;
+	}
+	else {
+		switch (desc.Type()) {
+			case DESC_DATA_EU_RO_NA:    case DESC_DATA_EU_RO_A: case DESC_DATA_EU_RW_NA:    case DESC_DATA_EU_RW_A:
+			case DESC_DATA_ED_RO_NA:    case DESC_DATA_ED_RO_A: case DESC_DATA_ED_RW_NA:    case DESC_DATA_ED_RW_A:
+			case DESC_CODE_N_NC_A:      case DESC_CODE_N_NC_NA: case DESC_CODE_R_NC_A:      case DESC_CODE_R_NC_NA:
+				if (cpu.cpl>desc.DPL()) needs_invalidation=true;
+				break;
+			default:
+				break;
+		}
+	}
+
+	if (needs_invalidation)
+		CPU_SetSegGeneral(segi,0);
 }
 
 void CPU_CheckSegments(void) {
@@ -531,10 +586,84 @@ doexception:
 	return CPU_PrepareException(EXCEPTION_GP,0);
 }
 
+#include <stack>
+
+int CPU_Exception_Level[0x20] = {0};
+std::stack<int> CPU_Exception_In_Progress;
+
+void CPU_Exception_Level_Reset() {
+	int i;
+	for (i=0;i < 0x20;i++)
+		CPU_Exception_Level[i] = 0;
+	while (!CPU_Exception_In_Progress.empty())
+		CPU_Exception_In_Progress.pop();
+}
+
+bool has_printed_double_fault = false;
+
 void CPU_Exception(Bitu which,Bitu error ) {
 //	LOG_MSG("Exception %d error %x",which,error);
+	if(which >= 0x20)
+		E_Exit("CPU_Exception: Exception %d is out of range.", (int)which);
+
+	if (CPU_Exception_Level[which] != 0) {
+		if (CPU_Exception_Level[EXCEPTION_DF] != 0 && cpu_triple_fault_reset) {
+			LOG_MSG("CPU_Exception: Double fault already in progress == Triple Fault. Resetting CPU.");
+			CPU_Snap_Back_To_Real_Mode();
+			E_Exit("Triple fault reset call unexpectedly returned");
+		}
+
+		if (!has_printed_double_fault) {
+			LOG_MSG("CPU_Exception: Exception %d already in progress, triggering double fault instead",(int)which);
+			has_printed_double_fault = true;
+		}
+		which = EXCEPTION_DF;
+		error = 0;
+	}
+
+	if (cpu_double_fault_enable) {
+		if (!(which == 0)) {
+			CPU_Exception_Level[which]++;
+			CPU_Exception_In_Progress.push((int)which);
+		}
+	}
+
 	cpu.exception.error=error;
 	CPU_Interrupt(which,CPU_INT_EXCEPTION | ((which>=8) ? CPU_INT_HAS_ERROR : 0),reg_eip);
+
+	if (which == EXCEPTION_PF || which == EXCEPTION_GP) {
+		if (CPU_Exception_Level[which] > 0)
+			CPU_Exception_Level[which]--;
+		if (!CPU_Exception_In_Progress.empty()) {
+			if ((Bitu)CPU_Exception_In_Progress.top() == which)
+				CPU_Exception_In_Progress.pop();
+		}
+	}
+}
+
+extern Bitu PIC_IRQCheck;
+
+/* NMI handling */
+void CPU_NMI_Interrupt() {
+    if (CPU_NMI_active) E_Exit("CPU_NMI_Interrupt() called while NMI already active");
+    CPU_NMI_active = true;
+    CPU_NMI_pending = false;
+    CPU_Interrupt(2/*INT 2 = NMI*/,0,reg_eip);
+}
+
+void CPU_Raise_NMI() {
+    CPU_NMI_pending = true;
+    CPU_Check_NMI();
+}
+
+void CPU_Check_NMI() {
+    if (!CPU_NMI_active && CPU_NMI_gate && CPU_NMI_pending) {
+        if (CPU_Cycles > 1) {
+            CPU_CycleLeft += CPU_Cycles;
+            CPU_Cycles = 1;
+        }
+        PIC_IRQCheck = true;
+    }
 }
 
 Bit8u lastint;
@@ -755,6 +884,9 @@ do_interrupt:
 
 
 void CPU_IRET(bool use32,Bitu oldeip) {
+	/* x86 CPUs consider IRET the completion of an NMI */
+	CPU_NMI_active = false;
+
 	if (!cpu.pmode) {					/* RealMode IRET */
 		if (use32) {
 			reg_eip=CPU_Pop32();
@@ -1514,13 +1646,13 @@ bool CPU_LTR(Bitu selector) {
 void CPU_LGDT(Bitu limit,Bitu base) {
 	LOG(LOG_CPU,LOG_NORMAL)("GDT Set to base:%X limit:%X",base,limit);
 	cpu.gdt.SetLimit(limit);
-	cpu.gdt.SetBase(base);
+	cpu.gdt.SetBase((PhysPt)base);
 }
 
 void CPU_LIDT(Bitu limit,Bitu base) {
 	LOG(LOG_CPU,LOG_NORMAL)("IDT Set to base:%X limit:%X",base,limit);
 	cpu.idt.SetLimit(limit);
-	cpu.idt.SetBase(base);
+	cpu.idt.SetBase((PhysPt)base);
 }
 
 Bitu CPU_SGDT_base(void) {
@@ -1538,10 +1670,55 @@ Bitu CPU_SIDT_limit(void) {
 }
 
 static bool printed_cycles_auto_info = false;
+/* On shutdown, snap back to real mode so shutdown code doesn't page fault */
+static bool snap_cpu_snapped=false;
+static Bit32u snap_cpu_saved_cr0;
+static Bit32u snap_cpu_saved_cr2;
+static Bit32u snap_cpu_saved_cr3;
+static Bit32u snap_cpu_saved_cr4;
+
+void CPU_Snap_Back_To_Real_Mode() {
+	if (snap_cpu_snapped) return;
+	SETFLAGBIT(IF,false);
+	cpu.code.big = false;
+	cpu.stack.big = false;
+	cpu.stack.mask = 0xffff;
+	cpu.stack.notmask = 0xffff0000;
+
+	snap_cpu_saved_cr0 = (Bit32u)cpu.cr0;
+	snap_cpu_saved_cr2 = (Bit32u)paging.cr2;
+	snap_cpu_saved_cr3 = (Bit32u)paging.cr3;
+	snap_cpu_saved_cr4 = cpu_cr4;
+	do_pse = false;
+
+	CPU_SET_CRX(0,0);
+	CPU_SET_CRX(2,0);
+	CPU_SET_CRX(3,0);
+	CPU_SET_CRX(4,0);
+
+	cpu.idt.SetBase(0);
+	cpu.idt.SetLimit(1023);
+	snap_cpu_snapped = true;
+}
+
+void CPU_Snap_Back_Restore() {
+	if (!snap_cpu_snapped) return;
+	CPU_SET_CRX(0,snap_cpu_saved_cr0);
+	CPU_SET_CRX(2,snap_cpu_saved_cr2);
+	CPU_SET_CRX(3,snap_cpu_saved_cr3);
+	CPU_SET_CRX(4,snap_cpu_saved_cr4);
+	snap_cpu_snapped = false;
+}
+
+void CPU_Snap_Back_Forget() {
+	snap_cpu_snapped = false;
+}
+
 void CPU_SET_CRX(Bitu cr,Bitu value) {
 	switch (cr) {
 	case 0:
 		{
+			value|=CR0_FPUPRESENT;
 			Bitu changed=cpu.cr0 ^ value;
 			if (!changed) return;
 			cpu.cr0=value;
@@ -1591,6 +1768,10 @@ void CPU_SET_CRX(Bitu cr,Bitu value) {
 	case 3:
 		PAGING_SetDirBase(value);
 		break;
+	case 4:
+		if (enable_pse) do_pse = !!(value & 0x10);
+		cpu_cr4=value;
+		break;
 	default:
 		LOG(LOG_CPU,LOG_ERROR)("Unhandled MOV CR%d,%X",cr,value);
 		break;
@@ -1601,7 +1782,7 @@ bool CPU_WRITE_CRX(Bitu cr,Bitu value) {
 	/* Check if privileged to access control registers */
 	if (cpu.pmode && (cpu.cpl>0)) return CPU_PrepareException(EXCEPTION_GP,0);
 	if ((cr==1) || (cr>4)) return CPU_PrepareException(EXCEPTION_UD,0);
-	if (CPU_ArchitectureType<CPU_ARCHTYPE_486OLDSLOW) {
+	if (CPU_ArchitectureType<CPU_ARCHTYPE_486NEWSLOW) {
 		if (cr==4) return CPU_PrepareException(EXCEPTION_UD,0);
 	}
 	CPU_SET_CRX(cr,value);
@@ -1612,12 +1793,14 @@ Bitu CPU_GET_CRX(Bitu cr) {
 	switch (cr) {
 	case 0:
 		if (CPU_ArchitectureType>=CPU_ARCHTYPE_PENTIUMSLOW) return cpu.cr0;
-		else if (CPU_ArchitectureType>=CPU_ARCHTYPE_486OLDSLOW) return (cpu.cr0 & 0xe005003f);
+		else if (CPU_ArchitectureType>=CPU_ARCHTYPE_486NEWSLOW) return (cpu.cr0 & 0xe005003f);
 		else return (cpu.cr0 | 0x7ffffff0);
 	case 2:
 		return paging.cr2;
 	case 3:
 		return PAGING_GetDirBase() & 0xfffff000;
+	case 4:
+		return cpu_cr4;
 	default:
 		LOG(LOG_CPU,LOG_ERROR)("Unhandled MOV XXX, CR%d",cr);
 		break;
@@ -1629,6 +1812,9 @@ bool CPU_READ_CRX(Bitu cr,Bit32u & retvalue) {
 	/* Check if privileged to access control registers */
 	if (cpu.pmode && (cpu.cpl>0)) return CPU_PrepareException(EXCEPTION_GP,0);
 	if ((cr==1) || (cr>4)) return CPU_PrepareException(EXCEPTION_UD,0);
+	if (CPU_ArchitectureType<CPU_ARCHTYPE_486NEWSLOW) {
+		if (cr==4) return CPU_PrepareException(EXCEPTION_UD,0);
+	}
 	retvalue=CPU_GET_CRX(cr);
 	return false;
 }

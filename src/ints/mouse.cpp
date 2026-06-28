@@ -33,6 +33,13 @@
 #include "int10.h"
 #include "bios.h"
 #include "dos_inc.h"
+#include "support.h"
+#include "control.h"
+#include "SDL.h"
+
+// VMware backdoor mouse protocol port
+#define VMWARE_PORT         0x5658u
+static Bitu PortRead(Bitu port, Bitu iolen);
 
 static Bitu call_int33,call_int74,int74_ret_callback,call_mouse_bd;
 static Bit16u ps2cbseg,ps2cbofs;
@@ -40,6 +47,8 @@ static bool useps2callback,ps2callbackinit;
 static Bitu call_ps2;
 static RealPt ps2_callback;
 static Bit16s oldmouseX, oldmouseY;
+
+static bool en_vmware = false;
 // forward
 void WriteMouseIntVector(void);
 
@@ -551,6 +560,153 @@ void Mouse_ButtonReleased(Bit8u button) {
 	mouse.last_released_y[button]=POS_Y;
 }
 
+void Mouse_WheelMoved(Bit32s scroll) {
+	// Wheel support for VMware/CuteMouse - store the value for later queries
+	// Not fully implemented in this base version
+}
+
+// ============================================================================
+// VMware backdoor mouse protocol
+// Based on: https://wiki.osdev.org/VMware_tools
+// This allows a VMware-compatible guest mouse driver (e.g. Windows 3.1 vmwmouse)
+// to read absolute mouse coordinates from the host via I/O port 0x5658.
+// ============================================================================
+
+static const Bit32u VMWARE_MAGIC           = 0x564D5868u;
+
+static const Bit16u CMD_GETVERSION         = 10u;
+static const Bit16u CMD_ABSPOINTER_DATA    = 39u;
+static const Bit16u CMD_ABSPOINTER_STATUS  = 40u;
+static const Bit16u CMD_ABSPOINTER_COMMAND = 41u;
+
+static const Bit32u ABSPOINTER_ENABLE      = 0x45414552u;
+static const Bit32u ABSPOINTER_RELATIVE    = 0xF5u;
+static const Bit32u ABSPOINTER_ABSOLUTE    = 0x53424152u;
+
+static const Bit8u BUTTON_LEFT            = 0x20u;
+static const Bit8u BUTTON_RIGHT           = 0x10u;
+static const Bit8u BUTTON_MIDDLE          = 0x08u;
+
+static bool vmware_mouse     = false;
+
+static Bit8u vmw_buttons     = 0;
+static Bit16u vmw_mouse_x     = 0x8000;
+static Bit16u vmw_mouse_y     = 0x8000;
+static Bit8s vmw_wheel      = 0;
+static bool vmw_updated    = false;
+
+// VMware command handlers
+static void CmdGetVersion() {
+    reg_eax = 0;
+    reg_ebx = VMWARE_MAGIC;
+}
+
+static void CmdAbsPointerData() {
+    reg_eax = vmw_buttons;
+    reg_ebx = vmw_mouse_x;
+    reg_ecx = vmw_mouse_y;
+    reg_edx = (vmw_wheel >= 0) ? vmw_wheel : 256 + vmw_wheel;
+    vmw_wheel = 0;
+}
+
+static void CmdAbsPointerStatus() {
+    reg_eax = vmw_updated ? 4 : 0;
+    vmw_updated = false;
+}
+
+static void CmdAbsPointerCommand() {
+    switch (reg_ebx) {
+    case ABSPOINTER_ENABLE:
+        break;
+    case ABSPOINTER_RELATIVE:
+        vmware_mouse = false;
+        SDL_ShowCursor(SDL_ENABLE);
+        break;
+    case ABSPOINTER_ABSOLUTE:
+        vmware_mouse = true;
+        SDL_ShowCursor(SDL_DISABLE);
+        break;
+    default:
+        LOG_MSG("VMWARE: unknown mouse subcommand 0x%08x", reg_ebx);
+        break;
+    }
+}
+
+// I/O port read handler for VMware backdoor
+static Bitu PortRead(Bitu port, Bitu iolen) {
+    (void)port;
+    (void)iolen;
+
+    if (reg_eax != VMWARE_MAGIC)
+        return 0;
+
+    switch (reg_cx) {
+    case CMD_GETVERSION:
+        CmdGetVersion();
+        break;
+    case CMD_ABSPOINTER_DATA:
+        CmdAbsPointerData();
+        break;
+    case CMD_ABSPOINTER_STATUS:
+        CmdAbsPointerStatus();
+        break;
+    case CMD_ABSPOINTER_COMMAND:
+        CmdAbsPointerCommand();
+        break;
+    default:
+        LOG_MSG("VMWARE: unknown command 0x%08x", reg_ecx);
+        break;
+    }
+
+    return reg_ax;
+}
+
+// Called from SDL event handlers
+void VMWARE_MouseButtonPressed(Bit8u button) {
+    switch (button) {
+    case 0:
+        vmw_buttons |= BUTTON_LEFT;
+        vmw_updated = true;
+        break;
+    case 1:
+        vmw_buttons |= BUTTON_RIGHT;
+        vmw_updated = true;
+        break;
+    case 2:
+        vmw_buttons |= BUTTON_MIDDLE;
+        vmw_updated = true;
+        break;
+    default:
+        break;
+    }
+}
+
+void VMWARE_MouseButtonReleased(Bit8u button) {
+    switch (button) {
+    case 0:
+        vmw_buttons &= ~BUTTON_LEFT;
+        vmw_updated = true;
+        break;
+    case 1:
+        vmw_buttons &= ~BUTTON_RIGHT;
+        vmw_updated = true;
+        break;
+    case 2:
+        vmw_buttons &= ~BUTTON_MIDDLE;
+        vmw_updated = true;
+        break;
+    default:
+        break;
+    }
+}
+
+void VMWARE_MousePosition(Bit16u pos_x, Bit16u pos_y) {
+    vmw_mouse_x = pos_x;
+    vmw_mouse_y = pos_y;
+    vmw_updated = true;
+}
+
+
 static void Mouse_SetMickeyPixelRate(Bit16s px, Bit16s py){
 	if ((px!=0) && (py!=0)) {
 		mouse.mickeysPerPixel_x	 = (float)px/X_MICKEY;
@@ -653,7 +809,8 @@ void Mouse_NewVideoMode(void) {
 
 	oldmouseX = static_cast<Bit16s>(mouse.x);
 	oldmouseY = static_cast<Bit16s>(mouse.y);
-
+    Mouse_BeforeNewVideoMode(false);
+    Mouse_AfterNewVideoMode(false);
 
 }
 
@@ -1031,71 +1188,175 @@ Bitu MOUSE_UserInt_CB_Handler(void) {
 	return CBRET_NONE;
 }
 
-void MOUSE_Init(Section* /*sec*/) {
-	// Callback for mouse interrupt 0x33
-	call_int33=CALLBACK_Allocate();
-//	RealPt i33loc=RealMake(CB_SEG+1,(call_int33*CB_SIZE)-0x10);
-	RealPt i33loc=RealMake(DOS_GetMemory(0x1)-1,0x10);
-	CALLBACK_Setup(call_int33,&INT33_Handler,CB_MOUSE,Real2Phys(i33loc),"Mouse");
-	// Wasteland needs low(seg(int33))!=0 and low(ofs(int33))!=0
-	real_writed(0,0x33<<2,i33loc);
-
-	call_mouse_bd=CALLBACK_Allocate();
-	CALLBACK_Setup(call_mouse_bd,&MOUSE_BD_Handler,CB_RETF8,
-		PhysMake(RealSeg(i33loc),RealOff(i33loc)+2),"MouseBD");
-	// pseudocode for CB_MOUSE (including the special backdoor entry point):
-	//	jump near i33hd
-	//	callback MOUSE_BD_Handler
-	//	retf 8
-	//  label i33hd:
-	//	callback INT33_Handler
-	//	iret
-
-
-	// Callback for ps2 irq
-	call_int74=CALLBACK_Allocate();
-	CALLBACK_Setup(call_int74,&INT74_Handler,CB_IRQ12,"int 74");
-	// pseudocode for CB_IRQ12:
-	//	push ds
-	//	push es
-	//	pushad
-	//	sti
-	//	callback INT74_Handler
-	//		doesn't return here, but rather to CB_IRQ12_RET
-	//		(ps2 callback/user callback inbetween if requested)
-
-	int74_ret_callback=CALLBACK_Allocate();
-	CALLBACK_Setup(int74_ret_callback,&MOUSE_UserInt_CB_Handler,CB_IRQ12_RET,"int 74 ret");
-	// pseudocode for CB_IRQ12_RET:
-	//	callback MOUSE_UserInt_CB_Handler
-	//	cli
-	//	mov al, 0x20
-	//	out 0xa0, al
-	//	out 0x20, al
-	//	popad
-	//	pop es
-	//	pop ds
-	//	iret
-
-	Bit8u hwvec=(MOUSE_IRQ>7)?(0x70+MOUSE_IRQ-8):(0x8+MOUSE_IRQ);
-	RealSetVec(hwvec,CALLBACK_RealPointer(call_int74));
-
-	// Callback for ps2 user callback handling
-	useps2callback = false; ps2callbackinit = false;
- 	call_ps2=CALLBACK_Allocate();
-	CALLBACK_Setup(call_ps2,&PS2_Handler,CB_RETF,"ps2 bios callback");
-	ps2_callback=CALLBACK_RealPointer(call_ps2);
-
-	memset(&mouse,0,sizeof(mouse));
-	mouse.hidden = 1; //Hide mouse on startup
-	mouse.timer_in_progress = false;
-	mouse.mode = 0xFF; //Non existing mode
-
-   	mouse.sub_mask=0;
-	mouse.sub_seg=0x6362;	// magic value
-	mouse.sub_ofs=0;
-
-	Mouse_ResetHardware();
-	Mouse_Reset();
-	Mouse_SetSensitivity(50,50,50);
+bool Mouse_IsLocked() {
+    extern bool mouselocked;
+    return mouselocked;
 }
+
+void Mouse_BeforeNewVideoMode(bool setmode) {
+    (void)setmode;
+    if (CurMode->type!=M_TEXT) RestoreCursorBackground();
+    else RestoreCursorBackgroundText();
+    mouse.hidden = 1;
+    mouse.oldhidden = 1;
+    mouse.background = false;
+}
+
+void Mouse_AfterNewVideoMode(bool setmode) {
+    (void)setmode;
+    mouse.inhibit_draw = false;
+    Bit8u mode = mem_readb(BIOS_VIDEO_MODE);
+    if(mode == mouse.mode) { /*LOG(LOG_MOUSE,LOG_NORMAL)("New video is the same as the old");*/ }
+    switch (mode) {
+    case 0x00:
+    case 0x01:
+    case 0x02:
+    case 0x03: {
+        Bitu rows = IS_EGAVGA_ARCH?real_readb(BIOSMEM_SEG,BIOSMEM_NB_ROWS):24;
+        if ((rows==0) || (rows>250)) rows = 25-1;
+        mouse.max_y = 8*(rows+1)-1;
+        break;
+    }
+    case 0x04:
+    case 0x05:
+    case 0x06:
+    case 0x07:
+    case 0x08:
+    case 0x09:
+    case 0x0a:
+    case 0x0d:
+    case 0x0e:
+    case 0x13:
+        mouse.max_y = 199;
+        break;
+    case 0x0f:
+    case 0x10:
+        mouse.max_y = 349;
+        break;
+    case 0x11:
+    case 0x12:
+        mouse.max_y = 479;
+        break;
+    default:
+        LOG(LOG_MOUSE,LOG_ERROR)("Unhandled videomode %X on reset",mode);
+        mouse.inhibit_draw = true;
+        return;
+    }
+    mouse.mode = mode;
+    mouse.hidden = 1;
+    mouse.max_x = 639;
+    mouse.min_x = 0;
+    mouse.min_y = 0;
+    mouse.granMask = (mode == 0x0d || mode == 0x13) ? 0xfffe : 0xffff;
+
+    mouse.events = 0;
+    mouse.timer_in_progress = false;
+    PIC_RemoveEvents(MOUSE_Limit_Events);
+
+    mouse.hotx       = 0;
+    mouse.hoty       = 0;
+    mouse.background = false;
+    mouse.screenMask = defaultScreenMask;
+    mouse.cursorMask = defaultCursorMask;
+    mouse.textAndMask= defaultTextAndMask;
+    mouse.textXorMask= defaultTextXorMask;
+    mouse.language   = 0;
+    mouse.page       = 0;
+    mouse.doubleSpeedThreshold = 64;
+    mouse.updateRegion_x[0] = 1;
+    mouse.updateRegion_y[0] = 1;
+    mouse.updateRegion_x[1] = 1;
+    mouse.updateRegion_y[1] = 1;
+    mouse.cursorType = 0;
+    mouse.enabled    = true;
+    mouse.oldhidden  = 1;
+
+    oldmouseX = static_cast<Bit16s>(mouse.x);
+    oldmouseY = static_cast<Bit16s>(mouse.y);
+}
+
+void MOUSE_Init(Section* sec) {
+    Section_prop * section = static_cast<Section_prop *>(sec);
+
+    // Read VMware config
+    en_vmware = section->Get_bool("vmware");
+
+    // Callback for mouse interrupt 0x33
+    call_int33=CALLBACK_Allocate();
+//	RealPt i33loc=RealMake(CB_SEG+1,(call_int33*CB_SIZE)-0x10);
+    RealPt i33loc=RealMake(DOS_GetMemory(0x1)-1,0x10);
+    CALLBACK_Setup(call_int33,&INT33_Handler,CB_MOUSE,Real2Phys(i33loc),"Mouse");
+    // Wasteland needs low(seg(int33))!=0 and low(ofs(int33))!=0
+    real_writed(0,0x33<<2,i33loc);
+
+    call_mouse_bd=CALLBACK_Allocate();
+    CALLBACK_Setup(call_mouse_bd,&MOUSE_BD_Handler,CB_RETF8,
+        PhysMake(RealSeg(i33loc),RealOff(i33loc)+2),"MouseBD");
+    // pseudocode for CB_MOUSE (including the special backdoor entry point):
+    //	jump near i33hd
+    //	callback MOUSE_BD_Handler
+    //	retf 8
+    //  label i33hd:
+    //	callback INT33_Handler
+    //	iret
+
+
+    // Callback for ps2 irq
+    call_int74=CALLBACK_Allocate();
+    CALLBACK_Setup(call_int74,&INT74_Handler,CB_IRQ12,"int 74");
+    // pseudocode for CB_IRQ12:
+    //	push ds
+    //	push es
+    //	pushad
+    //	sti
+    //	callback INT74_Handler
+    //		doesn't return here, but rather to CB_IRQ12_RET
+    //		(ps2 callback/user callback inbetween if requested)
+
+    int74_ret_callback=CALLBACK_Allocate();
+    CALLBACK_Setup(int74_ret_callback,&MOUSE_UserInt_CB_Handler,CB_IRQ12_RET,"int 74 ret");
+    // pseudocode for CB_IRQ12_RET:
+    //	callback MOUSE_UserInt_CB_Handler
+    //	cli
+    //	mov al, 0x20
+    //	out 0xa0, al
+    //	out 0x20, al
+    //	popad
+    //	pop es
+    //	pop ds
+    //	iret
+
+    Bit8u hwvec=(MOUSE_IRQ>7)?(0x70+MOUSE_IRQ-8):(0x8+MOUSE_IRQ);
+    RealSetVec(hwvec,CALLBACK_RealPointer(call_int74));
+
+    // Callback for ps2 user callback handling
+    useps2callback = false; ps2callbackinit = false;
+    call_ps2=CALLBACK_Allocate();
+    CALLBACK_Setup(call_ps2,&PS2_Handler,CB_RETF,"ps2 bios callback");
+    ps2_callback=CALLBACK_RealPointer(call_ps2);
+
+    memset(&mouse,0,sizeof(mouse));
+    mouse.hidden = 1; //Hide mouse on startup
+    mouse.timer_in_progress = false;
+    mouse.mode = 0xFF; //Non existing mode
+
+    mouse.sub_mask=0;
+    mouse.sub_seg=0x6362;	// magic value
+    mouse.sub_ofs=0;
+
+    Mouse_ResetHardware();
+    Mouse_Reset();
+    Mouse_SetSensitivity(50,50,50);
+
+    // Register VMware backdoor I/O port if enabled
+    if (en_vmware) {
+        LOG_MSG("VMWARE: Enabling VMware backdoor mouse interface on port 0x%04X", VMWARE_PORT);
+        IO_RegisterReadHandler(VMWARE_PORT, &PortRead, IO_MD);
+    }
+}
+
+// Keep Mouse_NewVideoMode for backward compatibility with int10_modes.cpp
+//void Mouse_NewVideoMode(void) {
+//    Mouse_BeforeNewVideoMode(false);
+//    Mouse_AfterNewVideoMode(false);
+//}

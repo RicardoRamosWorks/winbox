@@ -481,6 +481,11 @@ void DOSBOX_Init(void) {
 	Pstring->Set_values(cputype_values);
 	Pstring->Set_help("CPU Type used in emulation. auto is the fastest choice.");
 
+	// Integration device option
+	Pbool = secprop->Add_bool("integration device",Property::Changeable::WhenIdle,false);
+	Pbool->Set_help("Enable the integration I/O device, a way for additional software to talk to the emulator.\n"
+			"This can for example be used to return the emulator's current status and by the guest OS\n"
+			"to match the mouse pointer position.");
 
 	Pmulti_remain = secprop->Add_multiremain("cycles",Property::Changeable::Always," ");
 	Pmulti_remain->Set_help(
@@ -598,6 +603,11 @@ void DOSBOX_Init(void) {
 	secprop->AddInitFunction(&INT10_Init);
 	secprop->AddInitFunction(&MOUSE_Init); //Must be after int10 as it uses CurMode
 	secprop->AddInitFunction(&JOYSTICK_Init);
+
+	// VMware backdoor mouse protocol option
+	Pbool = secprop->Add_bool("vmware",Property::Changeable::WhenIdle,true);
+	Pbool->Set_help("Enable VMware backdoor mouse protocol (port 0x5658) for seamless mouse integration with compatible guest drivers.");
+
 	const char* joytypes[] = { "auto", "2axis", "4axis", "4axis_2", "fcs", "ch", "none",0};
 	Pstring = secprop->Add_string("joysticktype",Property::Changeable::WhenIdle,"none");
 	Pstring->Set_values(joytypes);

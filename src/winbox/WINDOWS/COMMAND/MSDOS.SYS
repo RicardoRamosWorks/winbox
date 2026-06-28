@@ -1,0 +1,11 @@
+[Paths]
+WinDir=C:\WINDOWS
+WinBootDir=C:\WINDOWS
+HostWinBootDrv=C
+
+[Options]
+Logo=0
+BootGUI=0
+BootMenu=0
+BootMulti=0
+BootWarn=0

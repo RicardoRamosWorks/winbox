@@ -1,0 +1,256 @@
+;WFW3.11 Installation Information
+;================================
+
+:w_underwin "Windows for Workgroups 3.11 Setup" [x]
+
+ You are attempting to run Setup from within
+ Windows. You need to quit Windows and then
+ run Setup from the MS-DOS command prompt.
+
+ Or you can run the Windows version of Setup
+ by clicking the Windows Setup icon in the
+ Main group in Program Manager
+
+ To quit Setup, select ~QUIT~
+
+                 [ QUIT ]
+::
+
+:w_no386 "Windows for Workgroups 3.11 Setup" [x]
+
+ Microsoft Windows for Workgroups 3.11 requires
+ an Intel 80386 or higher CPU in your system.
+
+ Setup cannot continue. To quit Setup, select ~QUIT~
+
+                 [ QUIT ]
+::
+
+:welcome "Windows for Workgroups 3.11 Setup" [x]
+
+ Welcome to Windows for Workgroups 3.11 Setup.
+
+ When Setup is complete, you will be able to use
+ Microsoft Windows for Workgroups 3.11 on your computer.
+
+ To set up Windows for Workgroups 3.11 now, select ~NEXT~
+ To quit without setting up, select ~QUIT~
+
+                  [ NEXT ]  [ QUIT ]                 
+::
+
+:w_partitionhdd "Windows for Workgroups 3.11 Setup" [x]
+
+ Setup needs to configure the unallocated space on your
+ hard disk to prepare it for use with Windows.
+
+ To have Setup configure the space on your hard disk for
+ you, choose the ~PARTITION HARD DISK~ option.
+
+           [ PARTITION HARD DISK ]  [ QUIT ]
+::
+
+:w_partcomp "Windows for Workgroups 3.11 Setup" [x]
+
+ Partitioning has been completed.
+ 
+ Setup will restart you computer in ~#?~ Seconds.
+ 
+ Please make sure the Windows for Workgroups 3.11
+ installation media remains in your disk drive.
+
+
+                  [ RESTART ]
+::
+
+:w_formathdd "Windows for Workgroups 3.11 Setup" [x]
+
+ Hard disk drive C is not formatted. Windows for Workgroups 3.11
+ cannot use unformatted drives.
+ 
+ Setup can format this drive, or you can quit Setup and format
+ the drive yourself.
+
+ To have Setup format hard disk drive C, select ~FORMAT~
+
+                    [ FORMAT ]  [ QUIT ]
+::
+
+:w_nohd "Windows for Workgroups 3.11 Setup" [x]
+
+ Setup cannot configure your hard disk drive.
+
+ There was an unknown error with you hard disk drive
+ and Setup cannot continue.
+
+ Setup will not exit.
+
+                   [ QUIT ]
+::
+
+:w_nord "Windows for Workgroups 3.11 Setup" [x]
+
+ Setup cannot create a RAM drive or Temporary Folder
+ for the Windows for Workgroups 3.11 Setup.
+
+ Setup cannot continue and will now exit.
+
+                   [ QUIT ]
+::
+
+:w_path "Set Insallation Directory" [x]
+
+ Windows for Workgroups 3.11 will be set up in the following
+ directory.
+
+ [$ ins_path,80                                             ]
+
+ To set up Windows for Workgroups 3.11 in this directory,
+ select ~CONTINUE~.
+
+ To set up Windows for Workgroups 3.11 in a different directory,
+ use the ~BACKSPACE~ key to delete characters, and then type
+ a new directory.
+
+                       [ CONTINUE ]
+::
+
+:w_dossetcomp "Windows for Workgroups 3.11 Setup" [x]
+
+ This portion of Setup has completed successfully.
+
+ Setup will restart your computer in ~#?~ Seconds.
+
+ Select ~RESTART~ to restart your computer now.
+ When your computer restarts, Setup will continue.
+
+                  [ RESTART ]
+::
+
+:w_dispdrv "Select a Display Driver from list" [x]
+Modern SVGA (Automatic Resolution, True Color)
+Modern SVGA (640x480, True Color)
+Modern SVGA (800x600, True Color)
+Modern SVGA (1024x768,True Color)
+Modern SVGA (1600x1200, True Color)
+Modern SVGA (1920x1080, True Color)
+S3 Trio Series (640x480, True Color)
+S3 Trio Series (800x600, True Color)
+S3 Trio Series (1024x768, True Color)
+Legacy VGA (640x480, 16 Color)
+::
+
+:w_kbddrv "Select a Keyboard Type from list" [x]
+Enhanced 101 or 102 key US and Non US keyboards
+PC-XT - Type keyboard (84 keys)
+PC-XT 83 key keyboard
+All AT type keyboards (84 - 86 keys)
+::
+
+:w_kbdlay "Select a Keyboard Layout from list" [x]
+Belgian
+Brazilian
+British
+Canadian Multilingual
+Danish
+Dutch
+Finnish
+French
+French Canadian
+German
+Icelandic
+Italian
+Latin American
+Norwegian
+Portuguese
+Spanish
+Swedish
+Swiss French
+Swiss German
+US
+US-Dvorak
+US-International
+::
+
+:w_lang "Select a Language from list" [x]
+Danish
+Dutch
+English (American)
+English (International)
+Finnish
+French
+French Canadian
+German
+Icelandic
+Italian
+Norwegian
+Portuguese
+Spanish
+Spanish (Modern)
+Sweedish
+::
+
+:w_mousedrv "Select a Mouse Type from list" [x]
+Logitech
+Microsoft or IBM PS2
+Genius serial mouse on COM1
+Genius serial mouse on COM2
+Mouse Systems serial or bus mouse
+Mouse Systems serial mouse on COM2
+No mouse or other pointing device
+::
+
+:w_overwrite "Existing Installation Found" [x]
+
+ Setup has found an existing installation of Microsoft Windows
+ on your hard disk in the path shown below.
+
+    ~%ins_path%~
+
+
+ - To overwrite your existing installation and use this directory
+   select ~OVERWRITE~.
+
+ - To change to a different directory select ~CHANGE~.
+
+                   [ OVERWRITE ] [ CHANGE ]
+::
+
+:w_sysnt "Windows for Workgroups 3.11 Setup" [x]
+
+ Setup has detected Windows NT Boot Files on your system.
+
+  - To attempt to create a Dual-Boot with NT, Select ~CONTINUE~.
+
+  - To overwrite the NT bootsector, select ~OVERWRITE~.
+      NOTE: Windows NT will no longer be bootable with this option.
+  
+  - to exit setup without making any changes select ~QUIT~
+
+            [ CONTINUE ] [ OVERWRITE ] [ QUIT ]
+::
+
+:w_sysdos "Windows for Workgroups 3.11 Setup" [x]
+
+ Setup has found MS-DOS Boot Files on your system. Setup will 
+ upgrade these files automatically. 
+ 
+  - If you do not want to upgrade MS-DOS, select ~QUIT~ to exit 
+    without making any changes.
+
+                  [ CONTINUE ] [ QUIT ]
+::
+
+
+:w_partfail "Windows for Workgroups 3.11 Setup" [x]
+
+ Setup has found a Non-DOS partition on your system.
+
+ Windows for Workgroups 3.11 requires the first partition
+ to be a primary DOS partition for installation.
+
+ Would you like Setup to format partition ~1~ as a Primary
+ DOS partition? 
+
+           [ FORMAT PARTITION ]  [ QUIT ]
+::

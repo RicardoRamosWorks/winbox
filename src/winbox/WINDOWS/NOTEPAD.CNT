@@ -1,0 +1,13 @@
+:Base notepad.hlp>proc4
+:Title Notepad Help
+:Index Notepad Help =notepad.hlp
+:Link Windows.hlp
+1 Working with Text
+2 Finding specific characters or words=WIN_NOTEPAD_FINDING_WORDS
+2 Deleting, cutting, copying, and pasting text=WIN_NOTEPAD_DELETE_TEXT
+2 Wrapping text to the window size=WIN_NOTEPAD_WRAPPING_TEXT
+1 Adding the Time and Date to Documents
+2 Inserting the time and date in a document=WIN_NOTEPAD_TIME_DATE
+2 Keeping a log by using Notepad=WIN_NOTEPAD_TRACKING_TIME
+1 Printing
+2 Troubleshooting printing problems =PTS_WHAT_WRONG@windows.hlp>proc4

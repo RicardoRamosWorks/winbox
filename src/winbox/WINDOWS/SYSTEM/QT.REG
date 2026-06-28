@@ -1,0 +1,18 @@
+REGEDIT
+HKEY_CLASSES_ROOT\.pic = ViewerFrameClass
+HKEY_CLASSES_ROOT\ViewerFrameClass = QuickTime Picture
+HKEY_CLASSES_ROOT\ViewerFrameClass\protocol\StdFileEditing\verb\0 = &Display
+HKEY_CLASSES_ROOT\ViewerFrameClass\protocol\StdFileEditing\verb\1 = &Activate Picture Viewer
+HKEY_CLASSES_ROOT\ViewerFrameClass\protocol\StdFileEditing\verb\2 = Display &Options...
+HKEY_CLASSES_ROOT\ViewerFrameClass\protocol\StdFileEditing\handler = %WINDIR%\system\qthndlr.dll
+HKEY_CLASSES_ROOT\ViewerFrameClass\shell\open\command = mplayer.exe /play %1
+HKEY_CLASSES_ROOT\.mov = PlayerFrameClass
+HKEY_CLASSES_ROOT\PlayerFrameClass = QuickTime Movie
+HKEY_CLASSES_ROOT\PlayerFrameClass\protocol\StdFileEditing\verb\0 = &Playback
+HKEY_CLASSES_ROOT\PlayerFrameClass\protocol\StdFileEditing\verb\1 = &Activate Movie Player
+HKEY_CLASSES_ROOT\PlayerFrameClass\protocol\StdFileEditing\verb\2 = Play &Options...
+HKEY_CLASSES_ROOT\PlayerFrameClass\protocol\StdFileEditing\handler = %WINDIR%\system\qthndlr.dll
+HKEY_CLASSES_ROOT\PlayerFrameClass\shell\open\command = mplayer.exe /play /close %1
+
+HKEY_CLASSES_ROOT\imagefile = Image File
+HKEY_CLASSES_ROOT\imagefile\shell\open\command = IVIEW32.EXE %1

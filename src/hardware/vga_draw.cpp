@@ -175,12 +175,21 @@ static Bit8u * VGA_Draw_Changes_Line(Bitu vidstart, Bitu line) {
 #endif
 
 static Bit8u * VGA_Draw_Linear_Line(Bitu vidstart, Bitu /*line*/) {
-// There is guaranteed extra memory past the wrap boundary. So, instead of using temporary
-// storage just copy appropriate chunk from the beginning to the wrap boundary when needed.
 	Bitu offset = vidstart & vga.draw.linear_mask;
-	if (vga.draw.linear_mask-offset < vga.draw.line_length)
-		memcpy(vga.draw.linear_base+vga.draw.linear_mask+1, vga.draw.linear_base, vga.draw.line_length);
-	Bit8u *ret = &vga.draw.linear_base[ offset ];
+	Bit8u* ret = &vga.draw.linear_base[offset];
+
+	// More efficient wrapping check: test if (offset + line_length) exceeds mask
+	if (GCC_UNLIKELY(((vga.draw.line_length + offset) & (~vga.draw.linear_mask)) != 0u)) {
+		Bitu end = (offset + vga.draw.line_length) & vga.draw.linear_mask;
+		Bitu wrapped_len = end & 0xFFF;
+		Bitu unwrapped_len = vga.draw.line_length - wrapped_len;
+
+		memcpy(TempLine, &vga.draw.linear_base[offset], unwrapped_len);
+		memcpy(&TempLine[unwrapped_len], vga.draw.linear_base, wrapped_len);
+
+		ret = TempLine;
+	}
+
 #if !defined(C_UNALIGNED_MEMORY)
 	if (GCC_UNLIKELY( ((Bitu)ret) & (sizeof(Bitu)-1)) ) {
 		memcpy( TempLine, ret, vga.draw.line_length );

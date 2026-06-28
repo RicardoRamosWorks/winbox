@@ -840,22 +840,6 @@ bool Config::PrintConfig(char const *const configfilename) const {
 
 {{SDL_VALUES}}
 
-[adjusts]
-#	╔════════════════╤═══════════════════════════════════════════════════════════════════╗
-#	║  ☼ language ☼	 │ Select another language file										 ║
-#	╟────────────────┼───────────────────────────────────────────────────────────────────╢
-#	║   ☼ machine ☼	 │ The type of machine Winbox tries to emulate						 ║
-#	║				 │ Values: [svga_s3] [svga_et3000] [svga_et4000] [svga_paradise]	 ║  
-#	║				 │ [vesa_nolfb] [vesa_oldvbe]										 ║
-#	╟────────────────┼───────────────────────────────────────────────────────────────────╢
-#	║				 │ Amount of memory Winbox has in megabytes							 ║
-#	║   ☼ memsize ☼	 │ This value is best left at its default to avoid problems,		 ║
-#	║				 │ though few games might require a higher value					 ║
-#	║				 │ There is generally no speed advantage when raising this			 ║
-#	╚════════════════╧═══════════════════════════════════════════════════════════════════╝
-
-{{ADJUSTS_VALUES}}
-
 [render]
 #	╔═══════════════════╤═══════════════════════════════════════════════════════════════════════════════════════════════╗
 #	║	 § frameskip §	│ How many frames to skip before drawing one													║
@@ -902,19 +886,6 @@ bool Config::PrintConfig(char const *const configfilename) const {
 #	╚═══════════════════╧═══════════════════════════════════════════════════════════════════════════════╝
 
 {{CPU_VALUES}}
-
-[pci]
-#	╔═══════════════════╤═══════════════════════════════════════════════════════════════════════╗
-#	║	  ♦ voodoo ♦	│ Enable VOODOO support													║
-#	║					│ Values: [false] [software] [opengl] [auto]							║
-#	╟───────────────────┼───────────────────────────────────────────────────────────────────────╢
-#	║					│ Specify VOODOO card memory size										║
-#	║	♦ voodoomem ♦	│		'standard'	4MB card (2MB front buffer + 1x2MB texture unit)	║
-#	║					│		'max'		12MB card (4MB front buffer + 2x4MB texture units)	║
-#	║					│ Values: [standard] [max]												║
-#	╚═══════════════════╧═══════════════════════════════════════════════════════════════════════╝
-
-{{PCI_VALUES}}
 
 [mixer]
 #	╔═══════════════╤═══════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -1002,18 +973,6 @@ bool Config::PrintConfig(char const *const configfilename) const {
 #	╚═══════════════════╧═══════════════════════════════════════════════════════════════════════════════════════╝
 
 {{JOYSTICK_VALUES}}
-
-[glide]
-#	╔════════════╤══════════════════════════════════════════════════════════════════════════╗
-#	║  ♥ glide ♥ │ Enable glide emulation: true,false										║
-#	╟────────────┼──────────────────────────────────────────────────────────────────────────╢
-#	║   ♥ lfb ♥	 │ LFB access: full,full_noaux,read,read_noaux,write,write_noaux,none		║
-#	║			 │ OpenGlide does not support locking aux buffer, please use _noaux modes	║
-#	╟────────────┼──────────────────────────────────────────────────────────────────────────╢
-#	║ ♥ splash ♥ │ Show 3dfx splash screen (requires 3dfxSpl2.dll)							║
-#	╚════════════╧══════════════════════════════════════════════════════════════════════════╝
-
-{{GLIDE_VALUES}}
 
 [dos]
 #	╔════════════════╤═══════════════════════════════════════════════════════════════════╗

@@ -418,7 +418,7 @@ void DOS_Shell::SyntaxError(void) {
 
 class AUTOEXEC : public Module_base {
 private:
-	AutoexecObject autoexec[17];
+	AutoexecObject autoexec[18];
 	AutoexecObject autoexec_echo;
 
 public:
@@ -427,14 +427,11 @@ public:
 		std::string line;
 		Section_line *section = static_cast<Section_line *>(configuration);
 
-		/* Check -securemode switch to disable mount/imgmount/boot after running
-		 * autoexec.bat */
-		bool secure = control->cmdline->FindExist("-securemode", true);
 
 		/* add stuff from the configfile unless -noautexec or -securemode is
 		 * specified. */
 		char *extra = const_cast<char *>(section->data.c_str());
-		if (extra && !secure &&
+		if (extra &&
 		        !control->cmdline->FindExist("-noautoexec", true)) {
 			/* detect if "echo off" is the first line */
 			size_t firstline_length = strcspn(extra, "\r\n");
@@ -468,21 +465,10 @@ public:
 		/* Check to see for extra command line options to be added (before the
 		 * command specified on commandline) */
 		/* Maximum of extra commands: 10 */
-		Bitu i = 1;
-		while (control->cmdline->FindString("-c", line, true) && (i <= 11)) {
-#if defined(WIN32) || defined(OS2)
-			// replace single with double quotes so that mount commands can
-			// contain spaces
-			for (Bitu temp = 0; temp < line.size(); ++temp)
-				if (line[temp] == '\'')
-					line[temp] = '\"';
-#endif // Linux users can simply use \" in their shell
-			autoexec[i++].Install(line);
-		}
+		
 
 		/* Check for the -exit switch which causes NTVDBM to when the command on
 		 * the commandline has finished */
-		bool addexit = control->cmdline->FindExist("-exit", true);
 
 		/* Check for first command being a directory or file */
 		char buffer[CROSS_LEN + 1];
@@ -491,6 +477,8 @@ public:
 
 		Bitu dummy = 1;
 		bool command_found = false;
+		/* Skip original processing if boot.dir is set (main() already consumed argv[1]) */
+		if (!boot.dir[0]) {
 		while (control->cmdline->FindCommand(dummy++, line) && !command_found) {
 			struct stat test;
 			if (line.length() > CROSS_LEN)
@@ -506,81 +494,36 @@ public:
 				if (stat(buffer, &test))
 					continue;
 			}
-			if (test.st_mode & S_IFDIR) {
-				autoexec[12].Install(std::string("MOUNT C \"") + buffer + "\"");
-				autoexec[13].Install("C:");
-				if (secure)
-					autoexec[14].Install("z:\\config.com -securemode");
-				command_found = true;
-			} else {
-				char *name = strrchr(buffer, CROSS_FILESPLIT);
-				if (!name) { // Only a filename
-					line = buffer;
-					if (getcwd(buffer, CROSS_LEN) == NULL)
-						continue;
-					if (strlen(buffer) + line.length() + 1 > CROSS_LEN)
-						continue;
-					strcat(buffer, cross_filesplit);
-					strcat(buffer, line.c_str());
-					if (stat(buffer, &test))
-						continue;
-					name = strrchr(buffer, CROSS_FILESPLIT);
-					if (!name)
-						continue;
-				}
-				*name++ = 0;
-				if (access(buffer, F_OK))
-					continue;
-				autoexec[12].Install(std::string("MOUNT C \"") + buffer + "\"");
-				autoexec[13].Install("C:");
-				/* Save the non-modified filename (so boot and imgmount can use
-				 * it (long filenames, case sensivitive)) */
-				strcpy(orig, name);
-				upcase(name);
-				if (strstr(name, ".BAT") != 0) {
-					if (secure)
-						autoexec[14].Install("z:\\config.com -securemode");
-					/* BATch files are called else exit will not work */
-					autoexec[15].Install(std::string("CALL ") + name);
-					if (addexit)
-						autoexec[16].Install("exit");
-				} else if ((strstr(name, ".IMG") != 0) ||
-				           (strstr(name, ".IMA") != 0)) {
-					// No secure mode here as boot is destructive and enabling
-					// securemode disables boot
-					/* Boot image files */
-					autoexec[15].Install(std::string("BOOT ") + orig);
-				} else if ((strstr(name, ".ISO") != 0) ||
-				           (strstr(name, ".CUE") != 0)) {
-					/* imgmount CD image files */
-					/* securemode gets a different number from the previous
-					 * branches! */
-					autoexec[14].Install(std::string("IMGMOUNT D \"") + orig +
-					                     std::string("\" -t iso"));
-					// autoexec[16].Install("D:");
-					if (secure)
-						autoexec[15].Install("z:\\config.com -securemode");
-					/* Makes no sense to exit here */
-				} else {
-					if (secure)
-						autoexec[14].Install("z:\\config.com -securemode");
-					autoexec[15].Install(name);
-					if (addexit)
-						autoexec[16].Install("exit");
-				}
-				command_found = true;
+			
+			/* Combining -securemode, noautoexec and no parameters leaves you with a
+			 * lovely Z:\. */
+			if (!command_found) {
+				
 			}
-		}
+		} // closes while loop
+		} // closes if (!boot.dir[0])
+		autoexec[10].Install(std::string("MOUNT W .\\winbox\\"));
+		autoexec[11].Install(std::string("MOUNT C c:\\"));
+		autoexec[12].Install("W:");
+		autoexec[13].Install("call autoexec.bat");
+		autoexec[14].Install("CD WINDOWS");
+		
+		if (boot.dir[0]) {
 
-		/* Combining -securemode, noautoexec and no parameters leaves you with a
-		 * lovely Z:\. */
-		if (!command_found) {
-			if (secure)
-				autoexec[12].Install("z:\\config.com -securemode");
+			char cmd1[4096];
+			char cmd2[4096];
+			
+			sprintf(cmd1, "MOUNT D %s", boot.dir);
+			autoexec[15].Install(cmd1);
+
+			sprintf(cmd2, "WIN D:\\%s", boot.exe);
+			autoexec[16].Install(cmd2);
+
+		} else {
+
+			autoexec[15].Install("WIN.COM PROGMAN.EXE");
 		}
-		autoexec[12].Install(std::string("MOUNT W .\\winbox\\"));
-		autoexec[10].Install("W:");
-		autoexec[11].Install("WIN");
+		autoexec[17].Install("EXIT");
 		VFILE_Register("AUTOEXEC.BAT", (Bit8u *)autoexec_data,
 		               (Bit32u)strlen(autoexec_data));
 	}

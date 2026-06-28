@@ -42,11 +42,27 @@
 
 
 #define CPU_ARCHTYPE_MIXED			0xff
-#define CPU_ARCHTYPE_386SLOW		0x30
-#define CPU_ARCHTYPE_386FAST		0x35
-#define CPU_ARCHTYPE_486OLDSLOW		0x40
-#define CPU_ARCHTYPE_486NEWSLOW		0x45
-#define CPU_ARCHTYPE_PENTIUMSLOW	0x50
+#define CPU_ARCHTYPE_8086			0x10
+#define CPU_ARCHTYPE_80186			0x20
+#define CPU_ARCHTYPE_286			0x30
+#define CPU_ARCHTYPE_386SLOW		0x40
+#define CPU_ARCHTYPE_386FAST		0x45
+#define CPU_ARCHTYPE_486OLDSLOW		0x50
+#define CPU_ARCHTYPE_486NEWSLOW		0x55
+#define CPU_ARCHTYPE_486OLD			0x60
+#define CPU_ARCHTYPE_486NEW			0x65
+#define CPU_ARCHTYPE_PENTIUMSLOW	0x70
+#define CPU_ARCHTYPE_PENTIUM		0x75
+#define CPU_ARCHTYPE_PENTIUMII		0x80
+#define CPU_ARCHTYPE_PENTIUMIII		0x85
+#define CPU_ARCHTYPE_EXPERIMENTAL	0xF0
+#define CPU_ARCHTYPE_PPROSLOW		0x72
+#define CPU_ARCHTYPE_PMMXSLOW		0x73
+
+#define CR0_WRITEPROTECT			0x00010000
+
+#define EXCEPTION_DB				1
+#define EXCEPTION_DF				8
 
 /* CPU Cycle Timing */
 extern Bit32s CPU_Cycles;
@@ -168,6 +184,41 @@ void CPU_Push32(Bitu value);
 
 void CPU_SetFlags(Bitu word,Bitu mask);
 
+void CPU_SetCPL(Bitu newcpl);
+void CPU_CheckSegment(const enum SegNames segi);
+
+void CPU_NMI_Interrupt(void);
+void CPU_Raise_NMI(void);
+void CPU_Check_NMI(void);
+
+void CPU_Snap_Back_To_Real_Mode(void);
+void CPU_Snap_Back_Restore(void);
+void CPU_Snap_Back_Forget(void);
+
+void CPU_Exception_Level_Reset(void);
+
+/* PSE / extended CPU features */
+extern bool lmsw_allow_clear_pe_bit;
+extern bool mask_stack_ptr_on_enter;
+extern bool enable_pse;
+extern bool enable_fpu;
+extern bool enable_msr;
+extern bool enable_syscall;
+extern bool enable_cmpxchg8b;
+extern bool cpu_double_fault_enable;
+extern bool cpu_triple_fault_reset;
+extern Bit8u enable_pse_extbits;
+extern Bit8u enable_pse_extmask;
+extern bool do_seg_limits;
+extern bool do_pse;
+
+/* NMI state tracking */
+extern bool CPU_NMI_gate;
+extern bool CPU_NMI_active;
+extern bool CPU_NMI_pending;
+
+void PAGING_SetWP(bool wp);
+
 
 #define EXCEPTION_UD			6
 #define EXCEPTION_TS			10
@@ -181,6 +232,7 @@ void CPU_SetFlags(Bitu word,Bitu mask);
 #define CR0_FPUEMULATION		0x00000004
 #define CR0_TASKSWITCH			0x00000008
 #define CR0_FPUPRESENT			0x00000010
+#define CR0_WRITEPROTECT		0x00010000
 #define CR0_PAGING				0x80000000
 
 

@@ -207,6 +207,7 @@ struct SDL_Block {
 		bool requestlock;
 		bool locked;
 		Bitu sensitivity;
+		MOUSE_EMULATION emulation;
 	} mouse;
 	SDL_Rect updateRects[1024];
 	Bitu num_joysticks;
@@ -221,6 +222,7 @@ struct SDL_Block {
 };
 
 static SDL_Block sdl;
+
 
 #define SETMODE_SAVES 1  //Don't set Video Mode if nothing changes.
 #define SETMODE_SAVES_CLEAR 1 //Clear the screen, when the Video Mode is reused
@@ -782,6 +784,10 @@ void GFX_CaptureMouse(void) {
 
 
 bool mouselocked; //Global variable for mapper
+
+// Mouse emulation control - shared with mouse.cpp
+MOUSE_EMULATION user_cursor_emulation = MOUSE_EMULATION_NEVER;
+
 static void CaptureMouse(bool pressed) {
 	if (!pressed)
 		return;
@@ -1230,6 +1236,20 @@ static void GUI_StartUp(Section * sec) {
 	if (!sdl.mouse.autoenable) SDL_ShowCursor(SDL_DISABLE);
 	sdl.mouse.autolock=false;
 	sdl.mouse.sensitivity=section->Get_int("sensitivity");
+
+	// Read mouse emulation mode
+	const std::string mouse_emu = section->Get_string("mouse_emulation");
+	if (mouse_emu == "always")
+		sdl.mouse.emulation = MOUSE_EMULATION_ALWAYS;
+	else if (mouse_emu == "locked")
+		sdl.mouse.emulation = MOUSE_EMULATION_LOCKED;
+	else if (mouse_emu == "never")
+		sdl.mouse.emulation = MOUSE_EMULATION_NEVER;
+	else
+		sdl.mouse.emulation = MOUSE_EMULATION_INTEGRATION;
+
+	user_cursor_emulation = sdl.mouse.emulation;
+
 	std::string output=section->Get_string("output");
 
 	/* Setup Mouse correctly if fullscreen */
@@ -1338,12 +1358,41 @@ void Mouse_AutoLock(bool enable) {
 }
 
 static void HandleMouseMotion(SDL_MouseMotionEvent * motion) {
-	if (sdl.mouse.locked || !sdl.mouse.autoenable)
+	bool process = false;
+	bool emulate = false;
+	switch (sdl.mouse.emulation) {
+	case MOUSE_EMULATION_ALWAYS:
+		process = true;
+		emulate = true;
+		break;
+	case MOUSE_EMULATION_LOCKED:
+		process = sdl.mouse.locked;
+		emulate = sdl.mouse.locked;
+		break;
+	case MOUSE_EMULATION_NEVER:
+		process = false;
+		emulate = false;
+		break;
+	case MOUSE_EMULATION_INTEGRATION:
+	default:
+		process = sdl.mouse.locked || !sdl.mouse.autoenable;
+		emulate = sdl.mouse.locked || !sdl.mouse.autoenable;
+		break;
+	}
+	if (process) {
 		Mouse_CursorMoved((float)motion->xrel*sdl.mouse.sensitivity/100.0f,
 						  (float)motion->yrel*sdl.mouse.sensitivity/100.0f,
 						  (float)(motion->x-sdl.clip.x)/(sdl.clip.w-1)*sdl.mouse.sensitivity/100.0f,
 						  (float)(motion->y-sdl.clip.y)/(sdl.clip.h-1)*sdl.mouse.sensitivity/100.0f,
-						  sdl.mouse.locked);
+						  emulate);
+	}
+	// Send host mouse position to VMware backdoor interface
+	// Scale from SDL window coordinates to VMware 0..0xFFFF range
+	if (sdl.clip.w > 1 && sdl.clip.h > 1) {
+		Bit16u vx = (Bit16u)((float)(motion->x - sdl.clip.x) / (float)(sdl.clip.w - 1) * 65535.0f);
+		Bit16u vy = (Bit16u)((float)(motion->y - sdl.clip.y) / (float)(sdl.clip.h - 1) * 65535.0f);
+		VMWARE_MousePosition(vx, vy);
+	}
 }
 
 static void HandleMouseButton(SDL_MouseButtonEvent * button) {
@@ -1361,12 +1410,15 @@ static void HandleMouseButton(SDL_MouseButtonEvent * button) {
 		switch (button->button) {
 		case SDL_BUTTON_LEFT:
 			Mouse_ButtonPressed(0);
+			VMWARE_MouseButtonPressed(0);
 			break;
 		case SDL_BUTTON_RIGHT:
 			Mouse_ButtonPressed(1);
+			VMWARE_MouseButtonPressed(1);
 			break;
 		case SDL_BUTTON_MIDDLE:
 			Mouse_ButtonPressed(2);
+			VMWARE_MouseButtonPressed(2);
 			break;
 		}
 		break;
@@ -1374,12 +1426,15 @@ static void HandleMouseButton(SDL_MouseButtonEvent * button) {
 		switch (button->button) {
 		case SDL_BUTTON_LEFT:
 			Mouse_ButtonReleased(0);
+			VMWARE_MouseButtonReleased(0);
 			break;
 		case SDL_BUTTON_RIGHT:
 			Mouse_ButtonReleased(1);
+			VMWARE_MouseButtonReleased(1);
 			break;
 		case SDL_BUTTON_MIDDLE:
 			Mouse_ButtonReleased(2);
+			VMWARE_MouseButtonReleased(2);
 			break;
 		}
 		break;
@@ -1667,6 +1722,18 @@ void Config_Add_SDL() {
 
 	Pbool = sdl_sec->Add_bool("usescancodes",Property::Changeable::Always,true);
 	Pbool->Set_help("Avoid usage of symkeys, might not work on all operating systems.");
+
+	// Mouse emulation mode
+	const char *mouse_emu_vals[] = { "integration", "locked", "always", "never", 0 };
+	Pstring  = sdl_sec->Add_string("mouse_emulation", Property::Changeable::Always, "integration");
+	Pstring->Set_values(mouse_emu_vals);
+	Pstring->Set_help(
+		"When is mouse emulated ?\n"
+		"integration: when not locked (default)\n"
+		"locked:      when locked\n"
+		"always:      every time\n"
+		"never:       at no time\n"
+		"If disabled, the mouse position in DOSBox is exactly where the host OS reports it.");
 }
 
 static void show_warning(char const * const message) {
@@ -1812,12 +1879,39 @@ static void erasemapperfile() {
 }
 
 
-
+	char dir[2048];
+	char exe[2048];
 //extern void UI_Init(void);
-__attribute__((used))
+	BootTarget boot;
 int main(int argc, char* argv[]) 
-
 {
+    boot.dir[0] = 0;
+    boot.exe[0] = 0;
+	if (argc >= 2) {
+    char temp[2048];
+    strncpy(temp, argv[1], sizeof(temp));
+    temp[sizeof(temp)-1] = 0;
+
+    // remove aspas se existir
+    char *p = temp;
+    if (*p == '"') {
+        p++;
+        char *q = strrchr(p, '"');
+        if (q) *q = 0;
+    }
+
+    char *slash = strrchr(p, '\\');
+
+    if (slash) {
+        *slash = 0;
+        strcpy(boot.dir, p);
+        strcpy(boot.exe, slash + 1);
+    } else {
+        strcpy(boot.dir, ".");
+        strcpy(boot.exe, p);
+    }
+}
+
 	try {
 		CommandLine com_line(argc,argv);
 		Config myconf(&com_line);
@@ -1828,38 +1922,15 @@ int main(int argc, char* argv[])
 
 		std::string editor;
 		if(control->cmdline->FindString("-editconf",editor,false)) launcheditor();
-		if(control->cmdline->FindString("-opencaptures",editor,true)) launchcaptures(editor);
 		if(control->cmdline->FindExist("-eraseconf")) eraseconfigfile();
 		if(control->cmdline->FindExist("-resetconf")) eraseconfigfile();
 		if(control->cmdline->FindExist("-erasemapper")) erasemapperfile();
 		if(control->cmdline->FindExist("-resetmapper")) erasemapperfile();
 
-		/* Can't disable the console with debugger enabled */
-#if defined(WIN32) && !(C_DEBUG)
-		if (control->cmdline->FindExist("-noconsole")) {
-			    no_stdout = true;
-
-			//FreeConsole();
-			/* Redirect standard input and standard output */
-
-				//no_stdout = true; // No stdout so don't write messages
-			//setvbuf(stdout, NULL, _IOLBF, BUFSIZ);	/* Line buffered */
-			//setbuf(stderr, NULL);					/* No buffering */
-		//} else {
-			//if (AllocConsole()) {
-			//	    no_stdout = true;
-
-				//fclose(stdin);
-				//fclose(stdout);
-				//fclose(stderr);
-
-			//}
-			//SetConsoleTitle("Winbox Status Window");
-		}
-#endif  //defined(WIN32) && !(C_DEBUG)
+  //defined(WIN32) && !(C_DEBUG)
 		if (control->cmdline->FindExist("-version") ||
 		    control->cmdline->FindExist("--version") ) {
-			printf("\nWinbox version 0.9.%s, copyright 2002-2026 RicardoRamosWorks.com and DOSBox Team.\n\n",VERSION);
+			printf("\nWinbox version 1.0, copyright 2002-2026 RicardoRamosWorks.com and DOSBox Team.\n\n",VERSION);
 			printf("Winbox is created by RicardoRamosWorks.com, based on Dosbox by the DOSBox Team (See AUTHORS file))\n");
 			printf("Winbox comes with ABSOLUTELY NO WARRANTY.  This is free software,\n");
 			printf("and you are welcome to redistribute it under certain conditions;\n");
@@ -1868,9 +1939,7 @@ int main(int argc, char* argv[])
 		}
 		if(control->cmdline->FindExist("-printconf")) printconfiglocation();
 
-#if C_DEBUG
-		DEBUG_SetupConsole();
-#endif
+
 
 #if defined(WIN32)
 	SetConsoleCtrlHandler((PHANDLER_ROUTINE) ConsoleEventHandler,TRUE);
@@ -1878,19 +1947,9 @@ int main(int argc, char* argv[])
         setbuf(stderr, NULL);
 #endif
 
-#ifdef OS2
-        PPIB pib;
-        PTIB tib;
-        DosGetInfoBlocks(&tib, &pib);
-        if (pib->pib_ultype == 2) pib->pib_ultype = 3;
-        setbuf(stdout, NULL);
-        setbuf(stderr, NULL);
-#endif
 
-	/* Display Welcometext in the console */
-	LOG_MSG("Winbox version 0.9.%s",VERSION);
-	LOG_MSG("Copyright 2002-2026 RicardoRamosWorks.com and DOSBox Team, published under GNU GPL.");
-	LOG_MSG("---");
+
+
 
 	/* Init SDL */
 #if SDL_VERSION_ATLEAST(1, 2, 14)
@@ -1907,11 +1966,7 @@ int main(int argc, char* argv[])
 		) < 0 ) E_Exit("Can't init SDL %s",SDL_GetError());
 	sdl.inited = true;
 
-#ifndef DISABLE_JOYSTICK
-	//Initialise Joystick separately. This way we can warn when it fails instead
-	//of exiting the application
-	if( SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0 ) LOG_MSG("Failed to init joystick support");
-#endif
+
 
 	sdl.laltstate = SDL_KEYUP;
 	sdl.raltstate = SDL_KEYUP;
@@ -1942,7 +1997,7 @@ int main(int argc, char* argv[])
 			else if (strcmp(sdl_videodrv,"windib")==0) sdl.using_windib = true;
 		}
 		if (SDL_VideoDriverName(sdl_drv_name,128)!=NULL) {
-			if (strcmp(sdl_drv_name,"windib")==0) LOG_MSG("SDL_Init: Starting up with SDL windib video driver.\n          Try to update your video card and directx drivers!");
+			if (strcmp(sdl_drv_name,"windib")==0);
 		}
 #endif
 	sdl.num_joysticks=SDL_NumJoysticks();
@@ -1964,7 +2019,6 @@ int main(int argc, char* argv[])
 			Cross::GetPlatformConfigName(config_file);
 			config_path += config_file;
 			if(control->PrintConfig(config_path.c_str())) {
-				LOG_MSG("CONFIG: Generating default configuration.\nWriting it to %s",config_path.c_str());
 				//Load them as well. Makes relative paths much easier
 				if(control->ParseConfigFile(config_path.c_str())) parsed_anyconfigfile = true;
 			}
@@ -1995,11 +2049,8 @@ int main(int argc, char* argv[])
 		Cross::GetPlatformConfigName(config_file);
 		config_path += config_file;
 		if(control->PrintConfig(config_path.c_str())) {
-			LOG_MSG("CONFIG: Generating default configuration.\nWriting it to %s",config_path.c_str());
 			//Load them as well. Makes relative paths much easier
 			control->ParseConfigFile(config_path.c_str());
-		} else {
-			LOG_MSG("CONFIG: Using default settings. Create a configfile to change them");
 		}
 	}
 
@@ -2031,13 +2082,7 @@ int main(int argc, char* argv[])
 		fflush(NULL);
 		if(sdl.wait_on_error) {
 			//TODO Maybe look for some way to show message in linux?
-#if (C_DEBUG)
-			GFX_ShowMsg("Press enter to continue");
-			fflush(NULL);
-			fgetc(stdin);
-#elif defined(WIN32)
-			Sleep(5000);
-#endif
+
 		}
 
 	}

@@ -20,7 +20,12 @@
 
 #ifndef DOSBOX_DOSBOX_H
 #define DOSBOX_DOSBOX_H
+struct BootTarget {
+    char dir[2048];
+    char exe[256];
+};
 
+extern BootTarget boot;
 #include "config.h"
 
 GCC_ATTRIBUTE(noreturn) void E_Exit(const char * message,...) GCC_ATTRIBUTE( __format__(__printf__, 1, 2));

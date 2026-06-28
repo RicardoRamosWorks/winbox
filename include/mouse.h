@@ -22,6 +22,13 @@
 #ifndef DOSBOX_MOUSE_H
 #define DOSBOX_MOUSE_H
 
+enum MOUSE_EMULATION
+{
+    MOUSE_EMULATION_NEVER,
+    MOUSE_EMULATION_ALWAYS,
+    MOUSE_EMULATION_INTEGRATION,
+    MOUSE_EMULATION_LOCKED,
+};
 
 void Mouse_ShowCursor(void);
 void Mouse_HideCursor(void);
@@ -35,8 +42,17 @@ void Mouse_CursorMoved(float xrel,float yrel,float x,float y,bool emulate);
 void Mouse_CursorSet(float x,float y);
 void Mouse_ButtonPressed(Bit8u button);
 void Mouse_ButtonReleased(Bit8u button);
+void Mouse_WheelMoved(Bit32s scroll);
 
 void Mouse_AutoLock(bool enable);
+bool Mouse_IsLocked(void);
+void Mouse_BeforeNewVideoMode(bool setmode);
+void Mouse_AfterNewVideoMode(bool setmode);
 void Mouse_NewVideoMode(void);
+
+// VMware backdoor mouse protocol
+void VMWARE_MouseButtonPressed(Bit8u button);
+void VMWARE_MouseButtonReleased(Bit8u button);
+void VMWARE_MousePosition(Bit16u pos_x, Bit16u pos_y);
 
 #endif
